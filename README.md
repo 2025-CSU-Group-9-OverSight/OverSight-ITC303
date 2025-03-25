@@ -9,6 +9,7 @@ This project is crucial for IT infrastructure monitoring, security enforcement, 
 - Timothy Markut
 - David Stinson
 - Nicholas Smith
+- Oliver Multari
 
 ## [Project Charter](https://docs.google.com/document/d/1S6CHM9pdh3tzhjktl-W98jiSdyM_CNEeo4VP5q7Iim8/edit?usp=sharing)
 
