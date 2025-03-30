@@ -10,7 +10,7 @@ All new features/bug fixes will be developed and tested in dedicated branches an
 
 ## Commit
 
-Commit messages should briefly detail any changes made.
+Commit messages should briefly detail any changes made. Any detailed explenation should be in the commit description. 
 
 ## Testing/bug reporting
 
