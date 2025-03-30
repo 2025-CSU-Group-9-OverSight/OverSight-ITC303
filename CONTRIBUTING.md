@@ -18,7 +18,7 @@ If you find a security vulnerability, do NOT open an issue as this repository is
 
 Testing should be performed regularly in an isolated environment. If a bug is found include a detailed description with steps for replication if able.
 
-New functions, bug testing etc will occur in a branch and then be merged back into the main branch once complete and tested via a code review
+New functions, bug testing etc will occur in a branch and then be merged back into the main branch once complete and tested via a code review.
 
 ## Coding conventions
 
