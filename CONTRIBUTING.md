@@ -1,11 +1,15 @@
 # Contribution Guidelines  
 
-## Branching Strategy  
-The main branch will be reserved for releases.  
-The development branch will be the main testing branch.  
-All new features/bug fixes will be developed and tested in dedicated branches and then merged to the development branch once reviewed.  
+## Branching Strategy
+
+The main branch will be reserved for releases.
+
+The development branch will be the main testing branch.
+
+All new features/bug fixes will be developed and tested in dedicated branches and then merged to the development branch once reviewed.
 
 ## Commit
+
 Commit messages should briefly detail any changes made.
 
 ## Testing/bug reporting
