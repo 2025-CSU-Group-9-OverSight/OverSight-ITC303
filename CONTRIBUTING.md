@@ -4,7 +4,7 @@
 ## Changes
 Pull requests  
 Branching  
-Commit messages  
+Commit messages should briefly detail any changes made.
 
 ## Testing/bug reporting
 
