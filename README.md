@@ -15,6 +15,8 @@ This project is crucial for IT infrastructure monitoring, security enforcement, 
 
 ## [Project Management Plan](https://docs.google.com/document/d/1OY_OlzYQVuXcd5Vz9nZP1dYgHVSR2Mk3ofjnDLS8FDE/edit?usp=sharing)
 
+![Gantt Chart](/gantt_chart.png)
+
 ## Setup instructions
   
 [Server](https://github.com/2025-CSU-Group-9-OverSight/OverSight-ITC303/wiki/Server-Installation)
