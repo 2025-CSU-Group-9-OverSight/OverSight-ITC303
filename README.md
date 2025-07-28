@@ -9,21 +9,16 @@ This project is crucial for IT infrastructure monitoring, security enforcement, 
 - Timothy Markut
 - David Stinson
 - Nicholas Smith
+- Oliver Multari
 
 ## [Project Charter](https://docs.google.com/document/d/1S6CHM9pdh3tzhjktl-W98jiSdyM_CNEeo4VP5q7Iim8/edit?usp=sharing)
 
 ## [Project Management Plan](https://docs.google.com/document/d/1OY_OlzYQVuXcd5Vz9nZP1dYgHVSR2Mk3ofjnDLS8FDE/edit?usp=sharing)
 
+![Gantt Chart](/gantt_chart.png)
+
 ## Setup instructions
-### Server
-Setup database 
-Install versionX of Node.js (download link/commands)  
-Clone the server folder  
-Setup config/environment variables (port, encryption keys, etc)  
-Setup port forwarding, SSL, reverse proxy, etc  
+  
+[Server](https://github.com/2025-CSU-Group-9-OverSight/OverSight-ITC303/wiki/Server-Installation)
 
-
-### Client
-Download software  
-Run installer/setup script to run as a service or through task scheduler  
-configure database connection
+[Client](https://github.com/2025-CSU-Group-9-OverSight/OverSight-ITC303/wiki/Client-Installation)  
