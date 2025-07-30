@@ -1,0 +1,55 @@
+[tool.poetry]
+name = "oversight-monitoring"
+version = "0.1.0"
+description = "OverSight monitoring scripts for system data collection"
+authors = ["OverSight Team"]
+readme = "readme.md"
+packages = [{include = "oversight_monitoring", from = "."}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+# Add runtime dependencies here as needed
+# psutil = "^5.9.0"
+# requests = "^2.28.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.0.0"
+flake8 = "^4.0.0"
+pytest = "^7.0.0"
+mypy = "^1.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]

@@ -17,8 +17,37 @@ This project is crucial for IT infrastructure monitoring, security enforcement, 
 
 ![Gantt Chart](/gantt_chart.png)
 
-## Setup instructions
-  
-[Server](https://github.com/2025-CSU-Group-9-OverSight/OverSight-ITC303/wiki/Server-Installation)
+## Development
 
-[Client](https://github.com/2025-CSU-Group-9-OverSight/OverSight-ITC303/wiki/Client-Installation)  
+**📖 [Complete Development Guide](./docs/DEVELOPMENT_GUIDE.md)**
+
+### What's Covered
+
+Complete guide covering:
+- **Git workflow** and branch strategy
+- **Development setup** and installation
+- **Conventional commits** and releases
+- **Testing** and code quality standards
+- **Project architecture** and structure
+
+### Quick Start
+
+1. **Prerequisites**: Install [Node.js](https://nodejs.org/) and [Poetry](https://python-poetry.org/)
+2. **Install**: `make install` (Windows: [setup make first](./docs/DEVELOPMENT_GUIDE.md#windows-setup-enabling-make-commands))
+3. **Develop**: `make dev` (starts NextJS server)
+4. **Commit**: `make commit` (conventional commits)
+5. **Help**: `make help` (see all commands)
+
+### Quick Reference
+
+For specific development tasks, jump to these sections:
+
+- [Getting Started](./docs/DEVELOPMENT_GUIDE.md#development-setup)
+- [Git Workflow](./docs/DEVELOPMENT_GUIDE.md#git-branch-strategy)
+- [Common Commands](./docs/DEVELOPMENT_GUIDE.md#common-commands)
+- [Making Commits](./docs/DEVELOPMENT_GUIDE.md#conventional-commits)
+
+## Component Setup
+
+- **Server**: See [Development Setup](./docs/DEVELOPMENT_GUIDE.md#development-setup) (NextJS application)
+- **Monitoring Scripts**: See [Python Dependencies](./docs/DEVELOPMENT_GUIDE.md#development-setup) (Poetry setup)  
