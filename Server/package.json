@@ -11,16 +11,17 @@
     "test": "echo \"Add test framework (Jest/Vitest)\" && exit 0"
   },
   "dependencies": {
+    "mongodb": "^6.18.0",
+    "next": "15.4.4",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "next": "15.4.4"
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4"
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }
