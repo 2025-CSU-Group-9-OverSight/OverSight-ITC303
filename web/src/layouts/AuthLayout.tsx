@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
-import SiteHeader from "@/components/layout/Header";
-import SiteFooter from "@/components/layout/Footer";
+import SiteHeader from "@/layout/Header";
+import SiteFooter from "@/layout/Footer";
 
 export default function AuthLayout({ children }: PropsWithChildren) {
   return (
