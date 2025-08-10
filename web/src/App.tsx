@@ -8,7 +8,6 @@ export default function App() {
   return (
     <div>
       <nav className="p-3 space-x-3">
-        <NavLink to="/login">Login</NavLink>
         <NavLink to="/dashboard">Dashboard</NavLink>
         <NavLink to="/reports">Reports</NavLink>
         <NavLink to="/settings">Settings</NavLink>
