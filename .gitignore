@@ -1,0 +1,19 @@
+
+# Editor
+*.code-workspace
+
+# Editor
+*.code-workspace
+
+# Editor
+*.code-workspace
+
+# Node/Frontend
+node_modules/
+*.log
+.env*
+web/node_modules/
+web/.next/
+web/dist/
+web/build/
+web/.turbo/
