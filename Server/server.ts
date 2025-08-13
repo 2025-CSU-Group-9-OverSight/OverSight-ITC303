@@ -6,7 +6,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { Socket } from 'node:net';
 
 
-const app = next({dev: process.env.NODE_ENV !== 'production'});  // turbopack? { dev, hostname, port, customServer: httpServer }
+const app = next({dev: process.env.NODE_ENV !== 'production', turbopack: true});
 const handle = app.getRequestHandler();
 const clients: Set<WebSocket> = new Set();  // Set for clients
 const hostname = process.env.HOSTNAME || 'localhost';
