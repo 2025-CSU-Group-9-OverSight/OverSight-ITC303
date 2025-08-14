@@ -1,17 +1,29 @@
 import psutil
 import json
 import time
+import sys
+import websockets
+import asyncio
 
 procs = None
 
-def main():
-    send_report()
-    while True:
-        time.sleep(5)
-        send_report()
+print(sys.executable)
+
+async def main(uri):
+    async with websockets.connect(uri) as websocket:
+        
+        """Test stuff to try and see if I can get a response"""
+        await websocket.send('Hello World!')
+        response = await websocket.recv()
+        print(response)
+        
+        send_report(websocket)
+        while True:
+            time.sleep(5)
+            send_report()
 
     
-def send_report():
+async def send_report(websocket):
     data = [
         
     ]
@@ -27,7 +39,12 @@ def send_report():
             'io_counters': str(proc.io_counters()),
             'status': str(proc.status())}
         )
-        
-    print(json.dumps(data))
+    
+    """More test prints"""
+    print('Trying send...')
+    await websocket.send(json.dumps(data))
+    print('Sent!')
 
-main()
+if __name__ == "__main__":
+    websocket_uri = "ws://localhost:3000"
+    asyncio.run(main(websocket_uri))
