@@ -16,7 +16,6 @@ app.prepare().then(()=>{                    // Start the next app
 
     // Handle normal http requests
     const server: Server = createServer((req: IncomingMessage, res: ServerResponse) => {
-        const myURL = new URL(req.url || '', 'https://localhost:3000/');
         handle(req, res);
     });
 
@@ -66,7 +65,7 @@ app.prepare().then(()=>{                    // Start the next app
 
     // When the web server receives an upgrade request, hand it over to the websocket server
     server.on('upgrade',(req: IncomingMessage, socket: Socket, head: Buffer) => {
-        const myURL = new URL(req.url || '', 'https://localhost:3000/');
+        const { pathname } = new URL(req.url || '', `http://${hostname}:${port}`);
 
         if (pathname === '/_next/webpack-hmr') {            //exception for next hot module reloading
             app.getUpgradeHandler()(req, socket, head);
