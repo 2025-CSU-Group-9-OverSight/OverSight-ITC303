@@ -17,10 +17,10 @@ async def main(uri):
         response = await websocket.recv()
         print(response)
         
-        send_report(websocket)
+        await send_report(websocket)
         while True:
             time.sleep(5)
-            send_report()
+            await send_report(websocket)
 
     
 async def send_report(websocket):
@@ -46,5 +46,5 @@ async def send_report(websocket):
     print('Sent!')
 
 if __name__ == "__main__":
-    websocket_uri = "ws://localhost:3000"
+    websocket_uri = "ws://localhost:3000/api/ws"
     asyncio.run(main(websocket_uri))
