@@ -26,6 +26,7 @@ openssl rand -base64 32
 Copy the generated key and replace `your-secret-key-here` in the `.env.local` file.
 
 #### MongoDB
+
 For developemnt you can either setup a local server by following the [MongoDB setup guide](../Database/readme.md) or use the server posted in the project discord.
 
 ### 2. Install Dependencies
