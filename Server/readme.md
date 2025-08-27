@@ -7,6 +7,9 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 First, create a `.env.local` file in the root directory with the following content:
 
 ```env
+# MongoDB
+MONGODB_URI=mongodb://user:password@localhost:27017
+
 # NextAuth Configuration
 NEXTAUTH_SECRET=your-secret-key-here
 NEXTAUTH_URL=http://localhost:3000
@@ -21,6 +24,10 @@ openssl rand -base64 32
 ```
 
 Copy the generated key and replace `your-secret-key-here` in the `.env.local` file.
+
+#### MongoDB
+
+For developemnt you can either setup a local server by following the [MongoDB setup guide](../Database/readme.md) or use the server posted in the project discord.
 
 ### 2. Install Dependencies
 
