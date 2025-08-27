@@ -7,10 +7,12 @@ readme = "readme.md"
 packages = [{include = "oversight_monitoring", from = "."}]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 # Add runtime dependencies here as needed
 # psutil = "^5.9.0"
 # requests = "^2.28.0"
+psutil = "^7.0.0"
+websockets = "^15.0.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.0.0"

@@ -2,7 +2,33 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+### 1. Environment Setup
+
+First, create a `.env.local` file in the root directory with the following content:
+
+```env
+# NextAuth Configuration
+NEXTAUTH_SECRET=your-secret-key-here
+NEXTAUTH_URL=http://localhost:3000
+```
+
+#### Generate a Secure Secret Key
+
+Use OpenSSL to generate a secure secret key:
+
+```bash
+openssl rand -base64 32
+```
+
+Copy the generated key and replace `your-secret-key-here` in the `.env.local` file.
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Run the Development Server
 
 ```bash
 npm run dev
@@ -13,6 +39,20 @@ pnpm dev
 # or
 bun dev
 ```
+
+## Authentication
+
+This project uses NextAuth.js for authentication with template users:
+
+- **Admin User**: admin@gmail.com / admin123
+- **Standard User**: standard@gmail.com / standard123
+
+Users are automatically redirected to role-specific dashboards:
+- Admin users → `/dashboard/admin`
+- Standard users → `/dashboard/standard`
+
+## UI Library
+We use shadcn/ui for UI components, view and install from here: https://ui.shadcn.com/docs/
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
