@@ -2,7 +2,6 @@ import NextAuth from "next-auth";
 import { MongoDBAdapter } from "@auth/mongodb-adapter"
 import { clientPromise } from "@/lib/mongodb";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { TEMPLATE_USERS } from "@/lib/auth";
 
 const handler = NextAuth({
   adapter: MongoDBAdapter(clientPromise),
