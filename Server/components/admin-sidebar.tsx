@@ -20,14 +20,14 @@ export default function AdminSidebar() {
 
   const navigationLinks = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
-    { name: "Alerts", href: "/dashboard/alerts", icon: Bell },
-    { name: "Processes", href: "/dashboard/processes", icon: Layers },
-    { name: "Reports", href: "/dashboard/reports", icon: BarChart3 },
+    { name: "Alerts", href: "/alerts", icon: Bell },
+    { name: "Processes", href: "/processes", icon: Layers },
+    { name: "Reports", href: "/reports", icon: BarChart3 },
   ];
 
   const adminLinks = [
-    { name: "Users", href: "/dashboard/users", icon: Users },
-    { name: "Settings", href: "/dashboard/settings", icon: Settings },
+    { name: "Users", href: "/users", icon: Users },
+    { name: "Settings", href: "/settings", icon: Settings },
   ];
 
   return (

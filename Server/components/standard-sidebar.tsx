@@ -19,14 +19,14 @@ export default function StandardSidebar() {
 
   const navigationLinks = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
-    { name: "Alerts", href: "/dashboard/alerts", icon: Bell },
-    { name: "Processes", href: "/dashboard/processes", icon: FileText },
-    { name: "Reports", href: "/dashboard/reports", icon: BarChart3 },
+    { name: "Alerts", href: "/alerts", icon: Bell },
+    { name: "Processes", href: "/processes", icon: FileText },
+    { name: "Reports", href: "/reports", icon: BarChart3 },
   ];
 
   const userLinks = [
-    { name: "Users", href: "/dashboard/users", icon: Users },
-    { name: "Settings", href: "/dashboard/settings", icon: Settings },
+    { name: "Users", href: "/users", icon: Users },
+    { name: "Settings", href: "/settings", icon: Settings },
   ];
 
   return (
