@@ -1,8 +1,10 @@
 import NextAuth from "next-auth";
+import { MongoDBAdapter } from "@auth/mongodb-adapter"
+import { clientPromise } from "@/lib/mongodb";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { TEMPLATE_USERS } from "@/lib/auth";
 
 const handler = NextAuth({
+  adapter: MongoDBAdapter(clientPromise),
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -15,9 +17,10 @@ const handler = NextAuth({
           return null;
         }
 
-        const user = TEMPLATE_USERS.find(
-          (u) => u.email === credentials.email && u.password === credentials.password
-        );
+        const client = await clientPromise;
+        const db = client.db();
+        const user = await db.collection("users").findOne({ email: credentials.email });
+
 
         if (user) {
           return {
