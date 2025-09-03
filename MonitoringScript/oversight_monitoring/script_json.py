@@ -11,11 +11,9 @@ import platform
 
 processCache = {}
 serviceCache = {}
-disk = None
-cpu = None
-ram = None
 
 deviceDetails = platform.uname()
+logicalCoreCount = psutil.cpu_count(logical=True)
 
 data = {
     'timestamp': None,
@@ -31,13 +29,13 @@ data = {
     'services': {},
     'disk': {},
     'cpu': {
-        'frequency': 0,
-        'cores': [],
+        'logicalCores': logicalCoreCount,
+        'percentUsed': []
     },
     'ram': {
         'totalBytes': 0,
         'availableBytes': 0,
-        'percentUsed': 0,
+        'percentUsed': 0
     }
 }
 
@@ -107,14 +105,21 @@ async def updateServices():
     
     return snapshot
 
-"""WIP Segment"""
+
 async def updateDisk():
     diskDict = {}
     diskInfo = psutil.disk_io_counters(perdisk=True)
-    """for disk in iter(diskInfo):
-        diskDict.update({str({disk}): {
-            'readCount': disk[0]
-        }})"""
+    diskNames = diskInfo.keys()
+
+    for i in diskNames:
+        diskDict.update({i: {
+            'read_count': diskInfo.get(i)[0],
+            'write_count': diskInfo.get(i)[1],
+            'read_bytes': diskInfo.get(i)[2],
+            'write_bytes': diskInfo.get(i)[3],
+            'read_time': diskInfo.get(i)[4],
+            'write_time': diskInfo.get(i)[5]
+            }})
     return diskDict
 
 async def createData():
@@ -124,8 +129,10 @@ async def createData():
     data['processes'] = await procecessSnapshot
     serviceSnapshot = updateServices()
     data['services'] = await serviceSnapshot
-    disks = psutil.disk_io_counters(perdisk=True)
-    data['disk'] = disks
+    disks = updateDisk()
+    data['disk'] = await disks
+    cpu = psutil.cpu_percent(percpu=True)
+    data['cpu']['percentUsed'] = cpu
     virtualMemory = psutil.virtual_memory()
     data['ram']['totalBytes'] = virtualMemory.total
     data['ram']['availableBytes'] = virtualMemory.available
