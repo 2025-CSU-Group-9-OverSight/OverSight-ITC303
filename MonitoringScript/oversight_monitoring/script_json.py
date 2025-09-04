@@ -7,13 +7,12 @@ import asyncio
 import datetime
 import platform
 
-"""Note: More work has to be done on this, but it seems to mostly work."""
+#Note: More work has to be done on this, but it seems to mostly work.
 
 processCache = {}
 serviceCache = {}
 
 deviceDetails = platform.uname()
-logicalCoreCount = psutil.cpu_count(logical=True)
 
 data = {
     'timestamp': None,
@@ -29,8 +28,8 @@ data = {
     'services': {},
     'disk': {},
     'cpu': {
-        'logicalCores': logicalCoreCount,
-        'percentUsed': []
+        'logicalCores': psutil.cpu_count(logical=True), 
+        'percentUsed': psutil.cpu_percent(percpu=True) # Assigns a value here to initialise the cache to avoid giving null value on first call
     },
     'ram': {
         'totalBytes': 0,
