@@ -63,11 +63,7 @@ async def updateProcesses():
     for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent', 'io_counters', 'status']):
         if proc.pid not in processCache:
             processCache[proc.pid] = proc
-            try:
-                proc.cpu_percent(None)
-            except psutil.NoSuchProcess:
-                pass
-    
+            
     snapshot = {}
     for pid, proc in list(processCache.items()):
         try:
@@ -96,6 +92,9 @@ async def updateServices():
             snapshot.update({str(serv.pid()): {
                 'name': str(serv.name()),
                 'display_name': str(serv.display_name()),
+                'cpu_percent': str(psutil.Process(serv.pid()).cpu_percent()),
+                'memory_percent': str(psutil.Process(serv.pid()).memory_percent()),
+                'io_counters': str(psutil.Process(serv.pid()).io_counters()),
                 'start_type': str(serv.start_type()),
                 'status': str(serv.status())
             }})
