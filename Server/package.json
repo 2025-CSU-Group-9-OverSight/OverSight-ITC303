@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node server.ts",
+    "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "NODE_ENV=production node server.ts",
+    "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test": "echo \"Add test framework (Jest/Vitest)\" && exit 0"
