@@ -24,8 +24,8 @@ data = {
         'machine': deviceDetails[4],
         'processor': deviceDetails[5]
     },
-    'processes': {},
-    'services': {},
+    'processes': [],
+    'services': [],
     'disk': {},
     'cpu': {
         'logicalCores': psutil.cpu_count(logical=True), 
@@ -64,16 +64,17 @@ async def updateProcesses():
         if proc.pid not in processCache:
             processCache[proc.pid] = proc
             
-    snapshot = {}
+    snapshot = []
     for pid, proc in list(processCache.items()):
         try:
-            snapshot.update({str(proc.pid): {
+            snapshot.append({
+                'pid': str(proc.pid),
                 'name': str(proc.name()),
                 'cpu_percent': str(proc.cpu_percent()),
                 'memory_percent': str(proc.memory_percent()),
                 'io_counters': str(proc.io_counters()),
                 'status': str(proc.status())
-            }})
+            })
         except psutil.NoSuchProcess:
             processCache.pop(pid, None)
     
@@ -86,10 +87,11 @@ async def updateServices():
         if serv.pid not in serviceCache:
             serviceCache[serv.pid] = serv
     
-    snapshot = {}
+    snapshot = []
     for pid, serv in list(serviceCache.items()):
         try:
-            snapshot.update({str(serv.pid()): {
+            snapshot.append({
+                'pid': str(serv.pid()),
                 'name': str(serv.name()),
                 'display_name': str(serv.display_name()),
                 'cpu_percent': str(psutil.Process(serv.pid()).cpu_percent()),
@@ -97,7 +99,7 @@ async def updateServices():
                 'io_counters': str(psutil.Process(serv.pid()).io_counters()),
                 'start_type': str(serv.start_type()),
                 'status': str(serv.status())
-            }})
+            })
         except psutil.NoSuchProcess:
             serviceCache.pop(pid, None)
     
