@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { UserRole } from "@/types/types";
+import { useToast } from "@/components/providers/ToastProvider";
 
 type UserRow = {
     id: string;
@@ -29,6 +30,9 @@ export default function UsersPage() {
     const router = useRouter();
     const [query, setQuery] = useState("");
     const [rows, setRows] = useState<UserRow[]>(initialUsers);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string>("");
+    const { showToast } = useToast();
 
     useEffect(() => {
         if (status === "loading") return;
@@ -54,8 +58,43 @@ export default function UsersPage() {
         return <Badge variant={role === UserRole.ADMIN ? "default" : "secondary"}>{role}</Badge>;
     };
 
-    const updateRole = (id: string, role: UserRole) => {
+    const loadUsers = async () => {
+        try {
+            setIsLoading(true);
+            setError("");
+            const res = await fetch(`/api/users`);
+            if (!res.ok) throw new Error(`Failed to load users (${res.status})`);
+            const data: UserRow[] = await res.json();
+            setRows(data);
+        } catch (e: any) {
+            const msg = e?.message || "Failed to load users";
+            setError(msg);
+            showToast({ type: "error", message: msg });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (status !== "authenticated") return;
+        loadUsers();
+    }, [status]);
+
+    const updateRole = async (id: string, role: UserRole) => {
+        const previous = rows;
         setRows((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
+        try {
+            const res = await fetch(`/api/users`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id, role })
+            });
+            if (!res.ok) throw new Error(`Failed to update role (${res.status})`);
+            showToast({ type: "success", message: "Role updated" });
+        } catch (e) {
+            setRows(previous);
+            showToast({ type: "error", message: "Failed to update role" });
+        }
     };
 
     const resetPassword = (id: string) => {
@@ -82,6 +121,8 @@ export default function UsersPage() {
                         </div>
                     </div>
 
+                    {isLoading && <p className="text-sm text-muted-foreground mb-2">Loading...</p>}
+                    {error && <p className="text-sm text-red-500 mb-2">{error}</p>}
                     <Table>
                         <TableHeader>
                             <TableRow>

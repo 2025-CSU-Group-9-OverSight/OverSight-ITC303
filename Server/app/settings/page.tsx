@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/components/providers/ToastProvider";
 
 export default function SettingsPage() {
     const { status } = useSession();
@@ -15,6 +16,9 @@ export default function SettingsPage() {
     const [theme, setTheme] = useState<string>("light");
     const [density, setDensity] = useState<string>("comfortable");
     const [timeFormat, setTimeFormat] = useState<string>("24h");
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [message, setMessage] = useState<string>("");
+    const { showToast } = useToast();
 
     useEffect(() => {
         if (status === "loading") return;
@@ -29,9 +33,49 @@ export default function SettingsPage() {
         );
     }
 
-    const handleSave = () => {
-        // Placeholder: Wire to API or local storage as needed
-        // localStorage.setItem("ui-settings", JSON.stringify({ theme, density, timeFormat }));
+    const loadSettings = async () => {
+        try {
+            setIsLoading(true);
+            setMessage("");
+            const res = await fetch(`/api/settings/me`);
+            if (!res.ok) throw new Error(`Failed to load settings (${res.status})`);
+            const data = await res.json();
+            setTheme(data.theme || "light");
+            setDensity(data.density || "comfortable");
+            setTimeFormat(data.timeFormat || "24h");
+        } catch (e: any) {
+            const msg = e?.message || "Failed to load settings";
+            setMessage(msg);
+            showToast({ type: "error", message: msg });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (status !== "authenticated") return;
+        loadSettings();
+    }, [status]);
+
+    const handleSave = async () => {
+        try {
+            setIsLoading(true);
+            setMessage("");
+            const res = await fetch(`/api/settings/me`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ theme, density, timeFormat })
+            });
+            if (!res.ok) throw new Error(`Failed to save settings (${res.status})`);
+            setMessage("Saved");
+            showToast({ type: "success", message: "Settings saved" });
+        } catch (e: any) {
+            const msg = e?.message || "Failed to save settings";
+            setMessage(msg);
+            showToast({ type: "error", message: msg });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -89,8 +133,10 @@ export default function SettingsPage() {
                             </Select>
                         </div>
                         <Separator />
-                        <div>
-                            <Button onClick={handleSave}>Save changes</Button>
+                        <div className="flex items-center gap-3">
+                            <Button onClick={handleSave} disabled={isLoading}>Save changes</Button>
+                            {isLoading && <span className="text-sm text-muted-foreground">Saving...</span>}
+                            {message && <span className="text-sm text-muted-foreground">{message}</span>}
                         </div>
                     </CardContent>
                 </Card>

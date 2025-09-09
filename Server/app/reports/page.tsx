@@ -33,6 +33,8 @@ export default function ReportsPage() {
     const [query, setQuery] = useState("");
     const [timeRange, setTimeRange] = useState("24");
     const [rows, setRows] = useState<VmRecord[]>(initialVms);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string>("");
 
     useEffect(() => {
         if (status === "loading") return;
@@ -56,9 +58,44 @@ export default function ReportsPage() {
         return Math.round(nums.reduce((a, b) => a + b, 0) / Math.max(1, nums.length));
     };
 
-    const refreshData = () => {
-        setRows((prev) => prev.map((r) => ({ ...r, cpu: Math.max(0, Math.min(100, r.cpu + (Math.random() * 10 - 5))), memory: Math.max(0, Math.min(100, r.memory + (Math.random() * 10 - 5))), disk: Math.max(0, Math.min(100, r.disk + (Math.random() * 10 - 5))) })));
+    const refreshData = async () => {
+        try {
+            setIsLoading(true);
+            setError("");
+            const params = new URLSearchParams();
+            if (query) params.set("search", query);
+            const res = await fetch(`/api/vms?${params.toString()}`);
+            if (!res.ok) throw new Error(`Failed to load VMs (${res.status})`);
+            const data: { id: string; name: string; host: string; cpu: number; memory: number; disk: number; }[] = await res.json();
+            setRows(data);
+        } catch (e: any) {
+            setError(e?.message || "Failed to load VMs");
+        } finally {
+            setIsLoading(false);
+        }
     };
+
+    useEffect(() => {
+        const controller = new AbortController();
+        const load = async () => {
+            try {
+                setIsLoading(true);
+                setError("");
+                const params = new URLSearchParams();
+                if (query) params.set("search", query);
+                const res = await fetch(`/api/vms?${params.toString()}`, { signal: controller.signal });
+                if (!res.ok) throw new Error(`Failed to load VMs (${res.status})`);
+                const data = await res.json();
+                setRows(data);
+            } catch (e: any) {
+                if (e?.name !== "AbortError") setError(e?.message || "Failed to load VMs");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        load();
+        return () => controller.abort();
+    }, [query]);
 
     return (
         <DashboardLayout title="Reports">
@@ -137,6 +174,8 @@ export default function ReportsPage() {
                                 </div>
                             </div>
 
+                            {isLoading && <p className="text-sm text-muted-foreground mb-2">Loading...</p>}
+                            {error && <p className="text-sm text-red-500 mb-2">{error}</p>}
                             <Table>
                                 <TableHeader>
                                     <TableRow>
