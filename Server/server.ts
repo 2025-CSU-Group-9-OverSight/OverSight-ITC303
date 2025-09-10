@@ -1,35 +1,50 @@
-import { parse, URL } from 'node:url';
+import { URL } from 'node:url';
 import { createServer, IncomingMessage, Server, ServerResponse } from 'node:http';
-
 import next from 'next';
 import { WebSocket, WebSocketServer } from 'ws';
 import { Socket } from 'node:net';
+import { inputData } from './lib/websocketDb.ts';
+import dotenv from 'dotenv';
 
+dotenv.config({ path: ['.env', '.env.local'], quiet: true });                               // Import environment variables
 
-const app = next({dev: process.env.NODE_ENV !== 'production', turbopack: true});
-const handle = app.getRequestHandler();
-const clients: Set<WebSocket> = new Set();  // Set for clients
 const hostname = process.env.HOSTNAME || 'localhost';
 const port = process.env.PORT || 3000;
+const clients: Set<WebSocket> = new Set();                                                  // Set for websocket clients
 
-app.prepare().then(()=>{                    // Start the next app
+const app = next({dev: process.env.NODE_ENV !== 'production', turbopack: true});            // Create the next app
+const handle = app.getRequestHandler();
 
-    // Handle normal http requests
-    const server: Server = createServer((req: IncomingMessage, res: ServerResponse) => {
-        handle(req, res);
+app.prepare().then(()=>{                                                                    // Start the next app
+
+    const server: Server = createServer((req: IncomingMessage, res: ServerResponse) => {    // Custom http server
+        handle(req, res);                                                                   // Pass normal http requests to next app
     });
 
     const wss = new WebSocketServer({ noServer: true}); // Above http server will handle upgrades
 
     wss.on('connection', (ws: WebSocket) => {
+
+        /* TODO - Implement relay for live view clients */
+
         clients.add(ws);
         console.log('New client connected');
 
         ws.send('Connected');
 
         ws.on('message',(message: Buffer, isBinary: boolean) => {
-            console.log(`New message received: ${message}`);
-            ws.send(`Recieved: ${message}`);
+            
+            const text = message.toString();
+
+            try {
+                const data = JSON.parse(text);
+                inputData(data);
+
+                ws.send(`Received JSON with keys: ${Object.keys(data).join(", ")}`);
+            } catch (err) {
+                console.log("Non-JSON message:", text);
+                ws.send(`Received text: ${text}`);
+            }
         });
 
         ws.on('close',() => {

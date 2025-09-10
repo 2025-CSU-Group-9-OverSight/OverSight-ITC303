@@ -124,7 +124,7 @@ async def updateDisk():
 
 async def createData():
     global data
-    data['timestamp'] = str(datetime.datetime.now())
+    data['timestamp'] = datetime.datetime.now().isoformat()
     procecessSnapshot = updateProcesses()
     data['processes'] = await procecessSnapshot
     serviceSnapshot = updateServices()
