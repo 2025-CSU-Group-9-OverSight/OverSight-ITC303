@@ -4,6 +4,7 @@ import { User, UserRole } from "@/types/types";
 export const TEMPLATE_USERS: User[] = [
   {
     id: "1",
+    name: "Admin User",
     email: "admin@gmail.com",
     password: "admin123", // In production, this would be hashed
     role: UserRole.ADMIN,
@@ -12,6 +13,7 @@ export const TEMPLATE_USERS: User[] = [
   },
   {
     id: "2",
+    name: "Standard User",
     email: "standard@gmail.com",
     password: "standard123", // In production, this would be hashed
     role: UserRole.STANDARD,

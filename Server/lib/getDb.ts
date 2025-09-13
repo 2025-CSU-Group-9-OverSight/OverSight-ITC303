@@ -1,5 +1,7 @@
-import { MongoClient, Db } from "mongodb";
+import { MongoClient, Db, ObjectId } from "mongodb";
 import dotenv from 'dotenv';
+import { TEMPLATE_USERS } from './auth';
+import bcrypt from 'bcryptjs';
 
 dotenv.config({ path: ['.env', '.env.local'], quiet: true });                   // Import environment variables
 
@@ -65,6 +67,8 @@ export default async function getDb(): Promise<Db> {
         )
         console.log("MongoDB: Created serviceLog")
     }
+
+    // Note: Users are now seeded manually via /api/seed endpoint
 
     return globalThis.mongoDb;
 }
