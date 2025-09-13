@@ -6,8 +6,6 @@ import {
   Home, 
   Bell, 
   FileText, 
-  BarChart3, 
-  Users, 
   Settings,
   Activity
 } from "lucide-react";
@@ -21,11 +19,6 @@ export default function StandardSidebar() {
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "Alerts", href: "/alerts", icon: Bell },
     { name: "Processes", href: "/processes", icon: FileText },
-    { name: "Reports", href: "/reports", icon: BarChart3 },
-  ];
-
-  const userLinks = [
-    { name: "Users", href: "/users", icon: Users },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 
@@ -74,39 +67,13 @@ export default function StandardSidebar() {
             );
           })}
         </div>
-
-        {/* Divider */}
-        <div className="border-t border-gray-200 my-4"></div>
-
-        {/* User Links */}
-        <div className="space-y-1">
-          {userLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = pathname === link.href;
-            
-            return (
-              <Link
-                key={link.name}
-                href={link.href}
-                className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                  isActive
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-600 hover:text-slate-500 hover:bg-gray-50"
-                }`}
-              >
-                <Icon className="mr-3 h-5 w-5" />
-                {link.name}
-              </Link>
-            );
-          })}
-        </div>
       </nav>
 
       {/* User Profile Section */}
       <div className="p-4 border-t border-gray-200">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-            <Users className="h-5 w-5 text-gray-600" />
+            <Activity className="h-5 w-5 text-gray-600" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
