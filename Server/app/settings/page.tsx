@@ -1,7 +1,7 @@
 "use client";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -9,16 +9,21 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/providers/ToastProvider";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User, Camera, X } from "lucide-react";
 
 export default function AccountPage() {
     const { status, data: session } = useSession();
     const router = useRouter();
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [name, setName] = useState<string>("");
     const [email, setEmail] = useState<string>("");
+    const [profilePicture, setProfilePicture] = useState<string>("");
     const [currentPassword, setCurrentPassword] = useState<string>("");
     const [newPassword, setNewPassword] = useState<string>("");
     const [confirmPassword, setConfirmPassword] = useState<string>("");
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isUploading, setIsUploading] = useState<boolean>(false);
     const [message, setMessage] = useState<string>("");
     const { showToast } = useToast();
 
@@ -36,6 +41,7 @@ export default function AccountPage() {
             const data = await res.json();
             setName(data.name || "");
             setEmail(data.email || "");
+            setProfilePicture(data.profilePicture || "");
         } catch (e: any) {
             const msg = e?.message || "Failed to load account data";
             setMessage(msg);
@@ -49,6 +55,58 @@ export default function AccountPage() {
         if (status !== "authenticated") return;
         loadAccountData();
     }, [status]);
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setIsUploading(true);
+            const formData = new FormData();
+            formData.append("profilePicture", file);
+
+            const res = await fetch("/api/account/me", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || "Failed to upload profile picture");
+            }
+
+            const data = await res.json();
+            setProfilePicture(data.profilePictureUrl);
+            showToast({ type: "success", message: "Profile picture uploaded successfully" });
+        } catch (e: any) {
+            const msg = e?.message || "Failed to upload profile picture";
+            showToast({ type: "error", message: msg });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleRemoveProfilePicture = async () => {
+        try {
+            setIsUploading(true);
+            const res = await fetch("/api/account/me", {
+                method: "DELETE",
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || "Failed to remove profile picture");
+            }
+
+            setProfilePicture("");
+            showToast({ type: "success", message: "Profile picture removed successfully" });
+        } catch (e: any) {
+            const msg = e?.message || "Failed to remove profile picture";
+            showToast({ type: "error", message: msg });
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     const handleSave = async () => {
         try {
@@ -112,6 +170,57 @@ export default function AccountPage() {
                         <CardTitle>Account Information</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
+                        {/* Profile Picture Section */}
+                        <div className="space-y-4">
+                            <Label>Profile Picture</Label>
+                            <div className="flex items-center space-x-4">
+                                <Avatar className="w-20 h-20">
+                                    <AvatarImage src={profilePicture} alt="Profile" />
+                                    <AvatarFallback>
+                                        <User className="w-8 h-8" />
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="space-y-2">
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleFileUpload}
+                                        className="hidden"
+                                    />
+                                    <div className="flex space-x-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={isUploading}
+                                        >
+                                            <Camera className="w-4 h-4 mr-2" />
+                                            {isUploading ? "Uploading..." : "Upload"}
+                                        </Button>
+                                        {profilePicture && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleRemoveProfilePicture}
+                                                disabled={isUploading}
+                                            >
+                                                <X className="w-4 h-4 mr-2" />
+                                                Remove
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        JPG, PNG, GIF, or WebP. Max 5MB.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <Separator />
+
                         <div className="space-y-2">
                             <Label htmlFor="name">Full Name</Label>
                             <Input

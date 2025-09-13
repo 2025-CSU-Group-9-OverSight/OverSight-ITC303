@@ -31,6 +31,7 @@ const handler = NextAuth({
               name: user.name,
               email: user.email,
               role: user.role,
+              profilePicture: user.profilePicture, // Add this line
             };
           }
 
@@ -47,6 +48,7 @@ const handler = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role;
+        token.profilePicture = user.profilePicture; // This line is correct
       }
       return token;
     },
@@ -54,6 +56,7 @@ const handler = NextAuth({
       if (token) {
         session.user.role = token.role;
         session.user.id = token.sub || '';
+        session.user.profilePicture = token.profilePicture; // This line is correct
       }
       return session;
     }

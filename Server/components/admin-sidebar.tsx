@@ -13,6 +13,7 @@ import {
   Layers
 } from "lucide-react";
 import Image from "next/image";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function AdminSidebar() {
   const { data: session } = useSession();
@@ -103,9 +104,12 @@ export default function AdminSidebar() {
       {/* User Profile Section */}
       <div className="p-4 border-t border-gray-200">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-            <Users className="h-5 w-5 text-gray-600" />
-          </div>
+          <Avatar className="w-10 h-10">
+            <AvatarImage src={session?.user?.profilePicture} alt="Profile" />
+            <AvatarFallback>
+              <Users className="h-5 w-5 text-gray-600" />
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
               {session?.user?.email || "Admin User"}
