@@ -9,7 +9,8 @@
     "start": "NODE_ENV=production tsx server.ts",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "test": "echo \"Add test framework (Jest/Vitest)\" && exit 0"
+    "test": "echo \"Add test framework (Jest/Vitest)\" && exit 0",
+    "seed": "curl -X POST http://localhost:3000/api/seed"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.11",
