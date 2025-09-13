@@ -114,12 +114,6 @@ export default function UsersPage() {
                     <CardTitle>Manage Users</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between mb-4">
-                        <div className="flex gap-2 items-center">
-                            <Input placeholder="Search name or email" value={query} onChange={(e) => setQuery(e.target.value)} className="w-64" />
-                            <Button>Invite User</Button>
-                        </div>
-                    </div>
 
                     {isLoading && <p className="text-sm text-muted-foreground mb-2">Loading...</p>}
                     {error && <p className="text-sm text-red-500 mb-2">{error}</p>}

@@ -16,11 +16,6 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json(u);
 }
 
-import { NextResponse } from 'next/server';
-
-export async function GET() { }
-
-
 
 // Get all users        
 // Get specific user    userId
