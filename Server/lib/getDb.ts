@@ -1,7 +1,5 @@
-import { MongoClient, Db, ObjectId } from "mongodb";
+import { MongoClient, Db } from "mongodb";
 import dotenv from 'dotenv';
-import { TEMPLATE_USERS } from './auth';
-import bcrypt from 'bcryptjs';
 
 dotenv.config({ path: ['.env', '.env.local'], quiet: true });                   // Import environment variables
 
@@ -34,7 +32,7 @@ export default async function getDb(): Promise<Db> {
                     timeField: "timestamp",
                     metaField: "meta"
                 },
-                expireAfterSeconds: 86400
+                expireAfterSeconds: 7889400 // Expire after 3 months
             }
         )
         console.log("MongoDB: Created performanceLog")
@@ -48,7 +46,7 @@ export default async function getDb(): Promise<Db> {
                     timeField: "timestamp",
                     metaField: "meta"
                 },
-                expireAfterSeconds: 86400
+                expireAfterSeconds: 7889400 // Expire after 3 months
             }
         )
         console.log("MongoDB: Created processLog")
@@ -62,7 +60,7 @@ export default async function getDb(): Promise<Db> {
                     timeField: "timestamp",
                     metaField: "meta"
                 },
-                expireAfterSeconds: 86400
+                expireAfterSeconds: 7889400 // Expire after 3 months
             }
         )
         console.log("MongoDB: Created serviceLog")
