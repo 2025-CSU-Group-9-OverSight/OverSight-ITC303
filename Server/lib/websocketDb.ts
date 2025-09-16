@@ -10,6 +10,10 @@ interface PerformanceLog {                                  // Typescript interf
     ram: Record<string, any>;
 }
 
+/**
+ * Send monitoring data to the database
+ * @param data 
+ */
 export async function inputData(data: PerformanceLog) {
 
     let date = new Date(data.timestamp);                    // Convert the timestamp string to a date
@@ -32,47 +36,27 @@ export async function inputData(data: PerformanceLog) {
         ram: data.ram
     });
 
-    let processArray: Array<any> = [];
-    data.processes.forEach(process => {                     // Reformat the process array
-        processArray.push({
+    if(data.processes.length > 0) {                         // Insert process array into the process log collection
+        await processLog.insertOne({
             timestamp: date,
             meta: {
-                deviceName: data.device.deviceName,
-                pid: process.pid,
+                deviceName: data.device.deviceName
             },
-            name: process.name,
-            cpu_percent: process.cpu_percent,
-            memory_percent: process.memory_percent,
-            io_counters: process.io_counters,
-            status: process.status
-        });
-
+            processes: data.processes
+        })
         /* TODO - Compare counters against alert threshold */
+    }
 
-    });
-    await processLog.insertMany(processArray);              // Insert process array into the process log collection
-
-    let serviceArray: Array<any> = [];
-    data.services.forEach(service => {                      // Reformat the service array
-        serviceArray.push({
+    if(data.services.length > 0) {
+        await serviceLog.insertOne({                        // Insert service array into the services log collection
             timestamp: date,
             meta: {
-                deviceName: data.device.deviceName,
-                pid: service.pid,
+                deviceName: data.device.deviceName
             },
-            name: service.name,
-            display_name: service.display_name,
-            cpu_percent: service.cpu_percent,
-            memory_percent: service.memory_percent,
-            io_counters: service.io_counters,
-            start_type: service.start_type,
-            status: service.status
-        });
-
+            services: data.services
+        })
         /* TODO - Compare counters against alert threshold */
-
-    });
-    await serviceLog.insertMany(serviceArray);              // Insert service array into the services log collection
+    }
 
     /* TODO - Update alert log if necessary */
 
