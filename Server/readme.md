@@ -35,7 +35,30 @@ For developemnt you can either setup a local server by following the [MongoDB se
 npm install
 ```
 
-### 3. Run the Development Server
+### 3. Seed the Database
+
+Before running the application, you need to seed the database with template users and mock data:
+
+```bash
+# Option 1: Using the API endpoint (recommended)
+curl -X POST http://localhost:3000/api/seed
+
+# Option 2: Using the standalone script
+npx tsx scripts/seed-db.ts
+```
+
+**Note**: The seed endpoint clears all existing users and populates the database with template users. Make sure your MongoDB connection is working before seeding.
+
+#### Verify Seeding
+
+You can check if the database was seeded successfully:
+
+```bash
+# Check current users in database
+curl http://localhost:3000/api/seed
+```
+
+### 4. Run the Development Server
 
 ```bash
 npm run dev

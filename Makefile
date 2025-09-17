@@ -1,6 +1,6 @@
 # OverSight-ITC303 Project Makefile
 
-.PHONY: help install install-server install-monitor dev build start lint type-check test run-monitor clean commit release
+.PHONY: help install install-server install-monitor dev build start lint type-check test run-monitor clean commit release seed
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -54,3 +54,6 @@ commit: ## Make a conventional commit
 
 release: ## Create a release
 	npm run release
+
+seed: ## Seed the database with template users (requires server to be running)
+	cd Server && npm run seed
