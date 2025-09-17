@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Activity, Play, Square, RefreshCw } from "lucide-react";
+import { Activity } from "lucide-react";
+import { useToast } from "@/components/providers/ToastProvider";
 
 type ProcessStatus = "running" | "stopped" | "warning";
 
@@ -23,12 +24,7 @@ interface ProcessItem {
     status: ProcessStatus;
 }
 
-const initialProcesses: ProcessItem[] = [
-    { id: "1", name: "Collector Service", host: "srv-01", cpu: 14, memory: 512, status: "running" },
-    { id: "2", name: "Ingest Worker", host: "srv-02", cpu: 32, memory: 1024, status: "warning" },
-    { id: "3", name: "Report Generator", host: "srv-03", cpu: 4, memory: 256, status: "stopped" },
-    { id: "4", name: "Metrics API", host: "srv-01", cpu: 18, memory: 768, status: "running" },
-];
+const initialProcesses: ProcessItem[] = [];
 
 export default function ProcessesPage() {
     const { status } = useSession();
@@ -37,6 +33,9 @@ export default function ProcessesPage() {
     const [query, setQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [rows, setRows] = useState<ProcessItem[]>(initialProcesses);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string>("");
+    const { showToast } = useToast();
 
     useEffect(() => {
         if (status === "loading") return;
@@ -51,6 +50,42 @@ export default function ProcessesPage() {
         });
     }, [rows, query, statusFilter]);
 
+    useEffect(() => {
+        // fetch processes from mock API when filters change
+        const controller = new AbortController();
+        const run = async () => {
+            setIsLoading(true);
+            setError("");
+            try {
+                const params = new URLSearchParams();
+                if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+                if (query) params.set("search", query);
+                const res = await fetch(`/api/processes?${params.toString()}`, { signal: controller.signal });
+                if (!res.ok) throw new Error(`Failed to load processes (${res.status})`);
+                const data: { id: string; name: string; host: string; cpuPct?: number; cpu?: number; memoryMb?: number; memory?: number; status: ProcessStatus; }[] = await res.json();
+                const mapped: ProcessItem[] = data.map(d => ({
+                    id: d.id,
+                    name: d.name,
+                    host: d.host,
+                    cpu: typeof d.cpuPct === "number" ? d.cpuPct : (typeof d.cpu === "number" ? d.cpu : 0),
+                    memory: typeof d.memoryMb === "number" ? d.memoryMb : (typeof d.memory === "number" ? d.memory : 0),
+                    status: d.status,
+                }));
+                setRows(mapped);
+            } catch (e: any) {
+                if (e?.name !== "AbortError") {
+                    const msg = e?.message || "Failed to load processes";
+                    setError(msg);
+                    showToast({ type: "error", message: msg });
+                }
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        run();
+        return () => controller.abort();
+    }, [query, statusFilter]);
+
     if (status === "loading") {
         return (
             <div className="flex justify-center items-center h-screen">
@@ -63,16 +98,6 @@ export default function ProcessesPage() {
         const variant = s === "running" ? "default" : s === "warning" ? "secondary" : "outline";
         const label = s === "running" ? "Running" : s === "warning" ? "Warning" : "Stopped";
         return <Badge variant={variant}>{label}</Badge>;
-    };
-
-    const handleStart = (id: string) => {
-        setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status: "running" } : r)));
-    };
-    const handleStop = (id: string) => {
-        setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status: "stopped" } : r)));
-    };
-    const handleRestart = (id: string) => {
-        setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status: "running" } : r)));
     };
 
     return (
@@ -142,7 +167,6 @@ export default function ProcessesPage() {
                                         <TableHead>CPU</TableHead>
                                         <TableHead>Memory (MB)</TableHead>
                                         <TableHead>Status</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -153,22 +177,6 @@ export default function ProcessesPage() {
                                             <TableCell>{p.cpu}%</TableCell>
                                             <TableCell>{p.memory}</TableCell>
                                             <TableCell>{statusBadge(p.status)}</TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <Button size="sm" variant="secondary" onClick={() => handleRestart(p.id)}>
-                                                        <RefreshCw className="h-4 w-4 mr-1" /> Restart
-                                                    </Button>
-                                                    {p.status !== "running" ? (
-                                                        <Button size="sm" onClick={() => handleStart(p.id)}>
-                                                            <Play className="h-4 w-4 mr-1" /> Start
-                                                        </Button>
-                                                    ) : (
-                                                        <Button size="sm" variant="destructive" onClick={() => handleStop(p.id)}>
-                                                            <Square className="h-4 w-4 mr-1" /> Stop
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
