@@ -1,9 +1,6 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { TEMPLATE_USERS } from "@/lib/auth";
-import getDb from "@/lib/getDb";
-import bcrypt from "bcryptjs";
-import { ObjectId } from "mongodb";
 
 const handler = NextAuth({
   providers: [
@@ -18,29 +15,19 @@ const handler = NextAuth({
           return null;
         }
 
-        try {
-          // Authenticate against database only
-          const db = await getDb();
-          const usersCollection = db.collection("users");
-          const user = await usersCollection.findOne({ email: credentials.email });
+        const user = TEMPLATE_USERS.find(
+          (u) => u.email === credentials.email && u.password === credentials.password
+        );
 
-          if (user && await bcrypt.compare(credentials.password, user.password)) {
-            console.log(`User ${credentials.email} authenticated successfully from database`);
-            return {
-              id: user._id.toString(),
-              name: user.name,
-              email: user.email,
-              role: user.role,
-              profilePicture: user.profilePicture, // Add this line
-            };
-          }
-
-          console.log(`Authentication failed for ${credentials.email} - user not found or password incorrect`);
-          return null;
-        } catch (error) {
-          console.error("Authentication error:", error);
-          return null;
+        if (user) {
+          return {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+          };
         }
+
+        return null;
       }
     })
   ],
@@ -48,7 +35,6 @@ const handler = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role;
-        token.profilePicture = user.profilePicture; // This line is correct
       }
       return token;
     },
@@ -56,7 +42,6 @@ const handler = NextAuth({
       if (token) {
         session.user.role = token.role;
         session.user.id = token.sub || '';
-        session.user.profilePicture = token.profilePicture; // This line is correct
       }
       return session;
     }
