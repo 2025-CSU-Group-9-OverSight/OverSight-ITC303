@@ -31,7 +31,6 @@ app.prepare().then(()=>{                    // Start the next app
             console.log(`New message received: ${message}`);
             ws.send(`Recieved: ${message}`);
         });
-
         ws.on('close',() => {
             clients.delete(ws);
             console.log('Client disconnected');
