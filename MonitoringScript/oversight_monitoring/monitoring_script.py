@@ -1,7 +1,5 @@
 import psutil
 import json
-import time
-import sys
 import websockets
 import asyncio
 import datetime
@@ -105,5 +103,5 @@ async def updateSend(websocket):
     await sendData(websocket)
 
 if __name__ == "__main__":
-    websocket_uri = "ws://localhost:3000/api/ws"
+    websocket_uri = "ws://localhost:3000/api/ws/monitoring"
     asyncio.run(main(websocket_uri))
