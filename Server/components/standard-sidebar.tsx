@@ -39,9 +39,6 @@ export default function StandardSidebar() {
             />
           </div>
           <span className="text-xl font-bold text-gray-900">Oversight</span>
-          <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
-            <span className="text-white text-xs font-bold">K</span>
-          </div>
         </div>
       </div>
 
