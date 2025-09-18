@@ -10,6 +10,11 @@ export async function POST() {
         const db = await getDb();
         const usersCollection = db.collection("users");
         
+        // Debug: Log database and collection info
+        console.log(`🔍 POST API Debug - Database name: ${db.databaseName}`);
+        console.log(`🔍 POST API Debug - Collection name: ${usersCollection.collectionName}`);
+        console.log(`🔍 POST API Debug - NODE_ENV: ${process.env.NODE_ENV}`);
+        
         // Clear existing users
         await usersCollection.deleteMany({});
         console.log("Cleared existing users from database");
@@ -56,10 +61,18 @@ export async function GET() {
         const db = await getDb();
         const usersCollection = db.collection("users");
         
+        // Debug: Log database and collection info
+        console.log(`🔍 API Debug - Database name: ${db.databaseName}`);
+        console.log(`🔍 API Debug - Collection name: ${usersCollection.collectionName}`);
+        console.log(`🔍 API Debug - NODE_ENV: ${process.env.NODE_ENV}`);
+        
         const users = await usersCollection.find({}, { projection: { password: 0 } }).toArray();
         
         return NextResponse.json({
             message: `Found ${users.length} users in database`,
+            database: db.databaseName,
+            collection: usersCollection.collectionName,
+            nodeEnv: process.env.NODE_ENV,
             users: users.map(user => ({
                 id: user._id,
                 name: user.name,

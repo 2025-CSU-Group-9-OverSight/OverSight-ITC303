@@ -12,6 +12,7 @@ declare global {
 
 interface LiveMetricsChartProps {
   title?: string;
+  selectedMachine?: string;
 }
 
 interface MetricsData {
@@ -21,44 +22,113 @@ interface MetricsData {
   disk: number;
 }
 
-export default function LiveMetricsChart({ title = "Live System Metrics" }: LiveMetricsChartProps) {
+interface WebSocketData {
+  timestamp: string;
+  device: {
+    deviceName: string;
+  };
+  cpu: {
+    percentUsed: number[];
+  };
+  ram: {
+    percentUsed: number;
+  };
+  disk: {
+    usage?: number;
+  };
+}
+
+export default function LiveMetricsChart({ title = "Live System Metrics", selectedMachine = "all" }: LiveMetricsChartProps) {
   const [selectedMetric, setSelectedMetric] = useState<'cpu' | 'memory' | 'disk'>('cpu');
   const [metricsData, setMetricsData] = useState<MetricsData[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
-  // Mock data generator
-  const generateMockMetrics = (): MetricsData => ({
-    timestamp: new Date().toISOString(),
-    cpu: Math.floor(Math.random() * 100),
-    memory: Math.floor(Math.random() * 100),
-    disk: Math.floor(Math.random() * 100),
-  });
-
+  // WebSocket connection management
   useEffect(() => {
-    // Initialize with some mock data
-    const initialData = Array.from({ length: 10 }, (_, i) => {
-      const time = new Date();
-      time.setSeconds(time.getSeconds() - (10 - i) * 2);
-      return {
-        timestamp: time.toISOString(),
-        cpu: Math.floor(Math.random() * 100),
-        memory: Math.floor(Math.random() * 100),
-        disk: Math.floor(Math.random() * 100),
+    if (selectedMachine === 'all') {
+      // Don't connect if "all" is selected - we'd need to handle multiple devices
+      setIsConnected(false);
+      setConnectionError('Select a specific machine for live data');
+      return;
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/api/ws/liveview`;
+    
+    try {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        setIsConnected(true);
+        setConnectionError(null);
+        
+        // Subscribe to the selected machine
+        ws.send(JSON.stringify({
+          type: 'subscribe',
+          deviceName: selectedMachine
+        }));
       };
-    });
-    setMetricsData(initialData);
 
-    // Update data every 2 seconds
-    const interval = setInterval(() => {
-      setMetricsData(prev => {
-        const newData = [...prev, generateMockMetrics()];
-        // Keep only last 50 data points to prevent memory issues
-        return newData.slice(-50);
-      });
-    }, 2000);
+      ws.onmessage = (event) => {
+        try {
+          const data: WebSocketData = JSON.parse(event.data);
+          
+          // Calculate average CPU from individual core percentages
+          const avgCpu = data.cpu.percentUsed.reduce((sum: number, core: number) => sum + core, 0) / data.cpu.percentUsed.length;
+          
+          const newMetricsData: MetricsData = {
+            timestamp: data.timestamp,
+            cpu: Math.round(avgCpu),
+            memory: Math.round(data.ram.percentUsed),
+            disk: data.disk.usage ? Math.round(data.disk.usage) : 0
+          };
 
-    return () => clearInterval(interval);
-  }, []);
+          setMetricsData(prev => {
+            const newData = [...prev, newMetricsData];
+            // Keep only last 50 data points to prevent memory issues
+            return newData.slice(-50);
+          });
+        } catch (error) {
+          console.error('Error parsing WebSocket data:', error);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        setIsConnected(false);
+        setConnectionError('Connection lost');
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setConnectionError('Connection error');
+        setIsConnected(false);
+      };
+
+    } catch (error) {
+      console.error('Failed to create WebSocket connection:', error);
+      setConnectionError('Failed to connect');
+    }
+
+    return () => {
+      if (wsRef.current) {
+        // Unsubscribe before closing
+        if (selectedMachine !== 'all') {
+          wsRef.current.send(JSON.stringify({
+            type: 'unsubscribe',
+            deviceName: selectedMachine
+          }));
+        }
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, [selectedMachine]);
 
   useEffect(() => {
     if (!chartRef.current || metricsData.length === 0) return;
@@ -173,7 +243,15 @@ export default function LiveMetricsChart({ title = "Live System Metrics" }: Live
         </div>
         <div ref={chartRef} className="w-full" />
         <div className="mt-4 text-xs text-muted-foreground text-center">
-          Data updates every 2 seconds • Last updated: {metricsData.length > 0 ? new Date(metricsData[metricsData.length - 1].timestamp).toLocaleTimeString() : 'Loading...'}
+          {selectedMachine === 'all' ? (
+            <span className="text-yellow-600">Select a specific machine for live data</span>
+          ) : isConnected ? (
+            <span className="text-green-600">● Live data • Last updated: {metricsData.length > 0 ? new Date(metricsData[metricsData.length - 1].timestamp).toLocaleTimeString() : 'Waiting for data...'}</span>
+          ) : connectionError ? (
+            <span className="text-red-600">● {connectionError}</span>
+          ) : (
+            <span className="text-gray-600">● Connecting...</span>
+          )}
         </div>
       </CardContent>
     </Card>
