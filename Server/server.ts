@@ -14,6 +14,16 @@ dotenv.config({ path: ['.env', '.env.local'], quiet: true });                   
 
 const hostname = process.env.HOSTNAME || 'localhost';
 const port = process.env.PORT || 3000;
+
+// Log MongoDB configuration at startup
+const mongoUri = process.env.MONGODB_URI || "mongodb://localhost:27017/";
+const database = process.env.NODE_ENV !== 'production' ? 'test' : 'oversight';
+console.log(`🔧 Server Configuration:`);
+console.log(`   Hostname: ${hostname}`);
+console.log(`   Port: ${port}`);
+console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`   MongoDB URI: ${mongoUri}`);
+console.log(`   Database: ${database}`);
 const liveviewSubscriptions = new Map<string, Set<WebSocket2>>();
 
 const app = next({dev: process.env.NODE_ENV !== 'production', turbopack: true});            // Create the next app

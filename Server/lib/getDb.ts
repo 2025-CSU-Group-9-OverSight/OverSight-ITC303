@@ -16,8 +16,11 @@ export default async function getDb(): Promise<Db> {
     if (globalThis.mongoDb) return globalThis.mongoDb;                          // Return the db instance if already exists
 
     if (!globalThis.mongoClient) {                                              // Create a client if it does not exist
+        console.log(`🔗 MongoDB URI: ${uri}`);
+        console.log(`📊 Database: ${database}`);
         globalThis.mongoClient = new MongoClient(uri);
         await globalThis.mongoClient.connect();                                 // Connect the client to the database
+        console.log(`✅ MongoDB connected successfully`);
     }
 
     globalThis.mongoDb = globalThis.mongoClient.db(database);                   // Create the db instance
