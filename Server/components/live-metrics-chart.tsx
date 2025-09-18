@@ -41,19 +41,30 @@ interface WebSocketData {
 export default function LiveMetricsChart({ title = "Live System Metrics", selectedMachine = "all" }: LiveMetricsChartProps) {
   const [selectedMetric, setSelectedMetric] = useState<'cpu' | 'memory' | 'disk'>('cpu');
   const [metricsData, setMetricsData] = useState<MetricsData[]>([]);
+  const [machines, setMachines] = useState<string[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
+  // Fetch available machines
+  useEffect(() => {
+    const fetchMachines = async () => {
+      try {
+        const res = await fetch('/api/machines');
+        if (!res.ok) throw new Error('Failed to fetch machines');
+        const data = await res.json();
+        setMachines(data.machines || []);
+      } catch (e) {
+        console.error('Error fetching machines:', e);
+      }
+    };
+    fetchMachines();
+  }, []);
+
   // WebSocket connection management
   useEffect(() => {
-    if (selectedMachine === 'all') {
-      // Don't connect if "all" is selected - we'd need to handle multiple devices
-      setIsConnected(false);
-      setConnectionError('Select a specific machine for live data');
-      return;
-    }
+    if (machines.length === 0) return; // Wait for machines to be loaded
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/api/ws/liveview`;
@@ -67,11 +78,21 @@ export default function LiveMetricsChart({ title = "Live System Metrics", select
         setIsConnected(true);
         setConnectionError(null);
         
-        // Subscribe to the selected machine
-        ws.send(JSON.stringify({
-          type: 'subscribe',
-          deviceName: selectedMachine
-        }));
+        if (selectedMachine === 'all') {
+          // Subscribe to all available machines
+          machines.forEach(machine => {
+            ws.send(JSON.stringify({
+              type: 'subscribe',
+              deviceName: machine
+            }));
+          });
+        } else {
+          // Subscribe to the selected machine
+          ws.send(JSON.stringify({
+            type: 'subscribe',
+            deviceName: selectedMachine
+          }));
+        }
       };
 
       ws.onmessage = (event) => {
@@ -89,9 +110,17 @@ export default function LiveMetricsChart({ title = "Live System Metrics", select
           };
 
           setMetricsData(prev => {
-            const newData = [...prev, newMetricsData];
-            // Keep only last 50 data points to prevent memory issues
-            return newData.slice(-50);
+            if (selectedMachine === 'all') {
+              // For "all machines", accumulate data from different machines
+              // Remove old data from this machine and add new data
+              const otherMachineData = prev.filter(d => !d.timestamp.includes(data.device.deviceName));
+              return [...otherMachineData, newMetricsData].slice(-50);
+            } else {
+              // For single machine, replace all data
+              const newData = [...prev, newMetricsData];
+              // Keep only last 50 data points to prevent memory issues
+              return newData.slice(-50);
+            }
           });
         } catch (error) {
           console.error('Error parsing WebSocket data:', error);
@@ -118,7 +147,15 @@ export default function LiveMetricsChart({ title = "Live System Metrics", select
     return () => {
       if (wsRef.current) {
         // Unsubscribe before closing
-        if (selectedMachine !== 'all') {
+        if (selectedMachine === 'all') {
+          // Unsubscribe from all machines
+          machines.forEach(machine => {
+            wsRef.current?.send(JSON.stringify({
+              type: 'unsubscribe',
+              deviceName: machine
+            }));
+          });
+        } else {
           wsRef.current.send(JSON.stringify({
             type: 'unsubscribe',
             deviceName: selectedMachine
@@ -128,6 +165,11 @@ export default function LiveMetricsChart({ title = "Live System Metrics", select
         wsRef.current = null;
       }
     };
+  }, [selectedMachine, machines]);
+
+  // Clear metrics data when machine filter changes
+  useEffect(() => {
+    setMetricsData([]);
   }, [selectedMachine]);
 
   useEffect(() => {
@@ -243,10 +285,11 @@ export default function LiveMetricsChart({ title = "Live System Metrics", select
         </div>
         <div ref={chartRef} className="w-full" />
         <div className="mt-4 text-xs text-muted-foreground text-center">
-          {selectedMachine === 'all' ? (
-            <span className="text-yellow-600">Select a specific machine for live data</span>
-          ) : isConnected ? (
-            <span className="text-green-600">● Live data • Last updated: {metricsData.length > 0 ? new Date(metricsData[metricsData.length - 1].timestamp).toLocaleTimeString() : 'Waiting for data...'}</span>
+          {isConnected ? (
+            <span className="text-green-600">
+              ● Live data • {selectedMachine === 'all' ? 'All machines' : selectedMachine} • 
+              Last updated: {metricsData.length > 0 ? new Date(metricsData[metricsData.length - 1].timestamp).toLocaleTimeString() : 'Waiting for data...'}
+            </span>
           ) : connectionError ? (
             <span className="text-red-600">● {connectionError}</span>
           ) : (
