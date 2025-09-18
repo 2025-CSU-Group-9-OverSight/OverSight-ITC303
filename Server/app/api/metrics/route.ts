@@ -53,9 +53,26 @@ export async function GET(request: Request) {
                 // Use ram.percentUsed directly
                 totalMemory += latestLog.ram.percentUsed || 0;
                 
-                // Handle disk usage - check if disk data exists and has usage
-                if (latestLog.disk && latestLog.disk.usage !== undefined) {
-                    totalDisk += latestLog.disk.usage;
+                // Handle disk usage - calculate across all partitions
+                if (latestLog.disk && latestLog.disk.partitions) {
+                    const partitions = Object.values(latestLog.disk.partitions);
+                    if (partitions.length > 0) {
+                        // Calculate usage based on total capacity
+                        let totalCapacity = 0;
+                        let totalUsed = 0;
+                        
+                        partitions.forEach((partition: any) => {
+                            if (partition && typeof partition.total === 'number' && typeof partition.used === 'number') {
+                                totalCapacity += partition.total;
+                                totalUsed += partition.used;
+                            }
+                        });
+                        
+                        if (totalCapacity > 0) {
+                            const overallDiskUsage = (totalUsed / totalCapacity) * 100;
+                            totalDisk += overallDiskUsage;
+                        }
+                    }
                 } else {
                     // If no disk data, don't count this device for disk average
                     // This prevents division by zero and shows 0% when no disk data

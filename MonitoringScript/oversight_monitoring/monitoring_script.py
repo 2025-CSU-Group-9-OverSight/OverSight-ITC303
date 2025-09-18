@@ -75,18 +75,27 @@ async def updateDisk():
     disks = psutil.disk_io_counters(perdisk=True)
     data['disks'] = disks
     
-    # Collect disk usage percentage for the root drive
-    try:
-        disk_usage = psutil.disk_usage('/')
-        data['disk']['usage'] = (disk_usage.used / disk_usage.total) * 100
-    except (OSError, PermissionError):
-        # Fallback for Windows systems - try C: drive
+    # Collect disk usage for all available partitions
+    disk_partitions = psutil.disk_partitions()
+    disk_usage_data = {}
+    
+    for partition in disk_partitions:
         try:
-            disk_usage = psutil.disk_usage('C:')
-            data['disk']['usage'] = (disk_usage.used / disk_usage.total) * 100
+            usage = psutil.disk_usage(partition.mountpoint)
+            disk_usage_data[partition.device] = {
+                'mountpoint': partition.mountpoint,
+                'fstype': partition.fstype,
+                'total': usage.total,
+                'used': usage.used,
+                'free': usage.free,
+                'percent': usage.percent
+            }
         except (OSError, PermissionError):
-            # If both fail, set to 0
-            data['disk']['usage'] = 0
+            # Skip partitions we can't access
+            continue
+    
+    # Store all disk usage data
+    data['disk']['partitions'] = disk_usage_data
 
 async def updateCPU():
     global data
