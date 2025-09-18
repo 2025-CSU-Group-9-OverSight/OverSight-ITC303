@@ -40,7 +40,7 @@ test: ## Run tests for all components
 	-cd Server && npm test
 
 run-monitor: ## Run the monitoring scripts
-	cd MonitoringScript && poetry run python -m oversight_monitoring.system_monitor
+	cd MonitoringScript && poetry run python -m oversight_monitoring.monitoring_script
 
 clean: ## Clean node_modules and build artifacts
 	-rm -rf node_modules
