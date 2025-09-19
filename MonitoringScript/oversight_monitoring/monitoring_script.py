@@ -71,8 +71,31 @@ async def updateServices():
 async def updateDisk():
     global data
 
+    # Collect disk I/O counters
     disks = psutil.disk_io_counters(perdisk=True)
     data['disks'] = disks
+    
+    # Collect disk usage for all available partitions
+    disk_partitions = psutil.disk_partitions()
+    disk_usage_data = {}
+    
+    for partition in disk_partitions:
+        try:
+            usage = psutil.disk_usage(partition.mountpoint)
+            disk_usage_data[partition.device] = {
+                'mountpoint': partition.mountpoint,
+                'fstype': partition.fstype,
+                'total': usage.total,
+                'used': usage.used,
+                'free': usage.free,
+                'percent': usage.percent
+            }
+        except (OSError, PermissionError):
+            # Skip partitions we can't access
+            continue
+    
+    # Store all disk usage data
+    data['disk']['partitions'] = disk_usage_data
 
 async def updateCPU():
     global data

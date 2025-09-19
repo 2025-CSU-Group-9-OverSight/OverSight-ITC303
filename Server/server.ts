@@ -159,7 +159,7 @@ function parseData(message: Buffer) {
 function relayData(data: any) {
     let clients = liveviewSubscriptions.get(data.device.deviceName);
     if (clients) {
-        let dataString = data.toString();
+        let dataString = JSON.stringify(data);
         for(const client of clients){
             if (client.OPEN) {
                 client.send(dataString);
