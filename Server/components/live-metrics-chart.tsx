@@ -34,7 +34,16 @@ interface WebSocketData {
     percentUsed: number;
   };
   disk: {
-    usage?: number;
+    partitions?: {
+      [device: string]: {
+        mountpoint: string;
+        fstype: string;
+        total: number;
+        used: number;
+        free: number;
+        percent: number;
+      };
+    };
   };
 }
 
@@ -102,11 +111,31 @@ export default function LiveMetricsChart({ title = "Live System Metrics", select
           // Calculate average CPU from individual core percentages
           const avgCpu = data.cpu.percentUsed.reduce((sum: number, core: number) => sum + core, 0) / data.cpu.percentUsed.length;
           
+          // Calculate overall disk usage across all partitions 
+          let diskUsage = 0;
+          if (data.disk.partitions) {
+            const partitions = Object.values(data.disk.partitions);
+            if (partitions.length > 0) {
+              // Calculate usage based on total capacity
+              let totalCapacity = 0;
+              let totalUsed = 0;
+              
+              partitions.forEach(partition => {
+                totalCapacity += partition.total;
+                totalUsed += partition.used;
+              });
+              
+              if (totalCapacity > 0) {
+                diskUsage = Math.round((totalUsed / totalCapacity) * 100);
+              }
+            }
+          }
+
           const newMetricsData: MetricsData = {
             timestamp: data.timestamp,
             cpu: Math.round(avgCpu),
             memory: Math.round(data.ram.percentUsed),
-            disk: data.disk.usage ? Math.round(data.disk.usage) : 0
+            disk: diskUsage
           };
 
           setMetricsData(prev => {
