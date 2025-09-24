@@ -106,7 +106,19 @@ export default function LiveMetricsChart({ title = "Live System Metrics", select
 
       ws.onmessage = (event) => {
         try {
+          // Skip non-JSON messages (like "Connected", "ping", etc.)
+          if (typeof event.data !== 'string' || !event.data.trim().startsWith('{')) {
+            console.log('WebSocket non-JSON message:', event.data);
+            return;
+          }
+          
           const data: WebSocketData = JSON.parse(event.data);
+          
+          // Skip if this doesn't look like metrics data
+          if (!data.cpu || !data.ram || !data.device || !data.timestamp) {
+            console.log('WebSocket message missing required fields:', data);
+            return;
+          }
           
           // Calculate average CPU from individual core percentages
           const avgCpu = data.cpu.percentUsed.reduce((sum: number, core: number) => sum + core, 0) / data.cpu.percentUsed.length;
