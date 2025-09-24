@@ -10,7 +10,8 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test": "echo \"Add test framework (Jest/Vitest)\" && exit 0",
-    "seed": "curl -X POST http://localhost:3000/api/seed"
+    "seed": "curl -X POST http://localhost:3000/api/seed",
+    "seed-alerts": "npx tsx scripts/seed-alerts.ts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.11",
