@@ -1,0 +1,26 @@
+{
+  "standard-version": {
+    "types": [
+      { "type": "feat", "section": "Features" },
+      { "type": "fix", "section": "Bug Fixes" },
+      { "type": "perf", "section": "Performance Improvements" },
+      { "type": "revert", "section": "Reverts" },
+      { "type": "monitor", "section": "Monitoring" },
+      { "type": "docs", "section": "Documentation", "hidden": false },
+      { "type": "style", "section": "Styles", "hidden": true },
+      { "type": "chore", "section": "Maintenance", "hidden": true },
+      { "type": "refactor", "section": "Code Refactoring", "hidden": true },
+      { "type": "test", "section": "Tests", "hidden": true },
+      { "type": "build", "section": "Build System", "hidden": true },
+      { "type": "ci", "section": "CI/CD", "hidden": true }
+    ],
+    "commitUrlFormat": "{{host}}/{{owner}}/{{repository}}/commit/{{hash}}",
+    "compareUrlFormat": "{{host}}/{{owner}}/{{repository}}/compare/{{previousTag}}...{{currentTag}}",
+    "issueUrlFormat": "{{host}}/{{owner}}/{{repository}}/issues/{{id}}",
+    "userUrlFormat": "{{host}}/{{user}}",
+    "releaseCommitMessageFormat": "chore(release): {{currentTag}}",
+    "scripts": {
+      "prerelease": "npm run lint"
+    }
+  }
+}
