@@ -71,6 +71,8 @@ export default function ProcessesPage() {
 
     // WebSocket connection for live process data
     useEffect(() => {
+        if (machines.length === 0) return; // Wait for machines to be loaded
+
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/api/ws/liveview`;
         
@@ -102,46 +104,23 @@ export default function ProcessesPage() {
             };
 
             ws.onmessage = (event) => {
-                console.log('WebSocket message received:', {
-                    type: typeof event.data,
-                    data: event.data,
-                    isString: typeof event.data === 'string',
-                    isObject: typeof event.data === 'object'
-                });
-
                 try {
-                    // Skip non-JSON messages like "Connected" or "Received JSON..."
-                    if (typeof event.data === 'string' && 
-                        (event.data.startsWith('Connected') || 
-                         event.data.startsWith('Received JSON') ||
-                         event.data === 'Connected')) {
-                        console.log('Skipping non-JSON message:', event.data);
-                        return;
-                    }
-
-                    let data;
-                    
-                    // Handle different data types
-                    if (typeof event.data === 'string') {
-                        console.log('Parsing JSON string:', event.data);
-                        data = JSON.parse(event.data);
-                    } else if (typeof event.data === 'object') {
-                        console.log('Using object directly:', event.data);
-                        data = event.data;
-                    } else {
-                        console.log('Unexpected data type:', typeof event.data, event.data);
+                    // Skip non-JSON messages (like "Connected", "Received JSON...", etc.)
+                    if (typeof event.data !== 'string' || !event.data.trim().startsWith('{')) {
+                        console.log('WebSocket non-JSON message:', event.data);
                         return;
                     }
                     
-                    console.log('Processed data:', data);
+                    const data = JSON.parse(event.data);
+                    
+                    // Skip if this doesn't look like process data
+                    if (!data.processes || !Array.isArray(data.processes) || !data.device) {
+                        console.log('WebSocket message missing required fields:', Object.keys(data));
+                        return;
+                    }
                     
                     // Check if this is process data
                     if (data && data.processes && Array.isArray(data.processes) && data.device) {
-                        console.log('✅ Valid process data received:', {
-                            processCount: data.processes.length,
-                            deviceName: data.device.deviceName,
-                            sampleProcess: data.processes[0]
-                        });
                         
                         // Map process data to our interface
                         const mappedProcesses: ProcessItem[] = data.processes.map((proc: any, index: number) => {
@@ -199,11 +178,7 @@ export default function ProcessesPage() {
                                    !name.includes('dpc');
                         });
 
-                        console.log('✅ Setting processes:', {
-                            total: mappedProcesses.length,
-                            filtered: filteredProcesses.length,
-                            sample: filteredProcesses[0]
-                        });
+                        // Process data is valid, update the state
                         
                         // Update processes - accumulate from multiple machines or replace for single machine
                         setAllProcesses(prevProcesses => {
@@ -222,16 +197,9 @@ export default function ProcessesPage() {
                         const now = new Date();
                         setLastUpdateTime(now);
                         setDataAge(0);
-                    } else {
-                        console.log('❌ Not process data:', {
-                            hasProcesses: !!(data && data.processes),
-                            isArray: Array.isArray(data?.processes),
-                            hasDevice: !!(data && data.device),
-                            dataKeys: data ? Object.keys(data) : 'no data'
-                        });
                     }
                 } catch (error) {
-                    console.error('❌ Error parsing WebSocket process data:', error, 'Data:', event.data);
+                    console.error('Error parsing WebSocket process data:', error);
                 }
             };
 
@@ -243,13 +211,14 @@ export default function ProcessesPage() {
 
             ws.onerror = (error) => {
                 console.error('Processes WebSocket error:', error);
-                setConnectionError('Connection error');
+                setConnectionError('WebSocket connection failed');
                 setIsConnected(false);
             };
 
         } catch (error) {
             console.error('Failed to create processes WebSocket connection:', error);
-            setConnectionError('Failed to connect');
+            setConnectionError('Failed to create WebSocket connection');
+            setIsConnected(false);
         }
 
         return () => {
