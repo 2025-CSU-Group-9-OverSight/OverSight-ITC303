@@ -56,16 +56,17 @@ app.prepare().then(()=>{                                                        
                 case '/api/ws/monitoring':
                     inputData(data);
                     relayData(data);
-                    ws.send(`Received JSON with keys: ${Object.keys(data).join(", ")}`);
+                    ws.send(`Data received ${data.timestamp}`);
                     break;
                 case '/api/ws/liveview':
                     if(data.type === 'subscribe' && data.deviceName) {
                        subscribe(ws, data.deviceName);
+                       ws.send(`Subscribed to ${data.deviceName}`);
                     }
                     if(data.type === 'unsubscribe' && data.deviceName) {
                         unsubscribe(ws, data.deviceName);
+                        ws.send(`Unsubscribed from ${data.deviceName}`);
                     }
-                    ws.send(`Received JSON with keys: ${Object.keys(data).join(", ")}`);
                     break;
                 default:
                     break;
