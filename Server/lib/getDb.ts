@@ -18,8 +18,14 @@ export default async function getDb(): Promise<Db> {
     if (!globalThis.mongoClient) {                                              // Create a client if it does not exist
         console.log(`🔗 MongoDB URI: ${uri}`);
         console.log(`📊 Database: ${database}`);
-        globalThis.mongoClient = new MongoClient(uri);
-        await globalThis.mongoClient.connect();                                 // Connect the client to the database
+        let client = new MongoClient(uri);
+        try {
+            await client.connect();                                             // Connect the client to the database
+        } catch (error) {
+            console.log(`❌ MongoDB failed to connect`);
+            throw(error)
+        }
+        globalThis.mongoClient = client;
         console.log(`✅ MongoDB connected successfully`);
     }
 
@@ -67,6 +73,20 @@ export default async function getDb(): Promise<Db> {
             }
         )
         console.log("MongoDB: Created serviceLog")
+    }
+
+    if(!collections.find(collection=> collection.name === "alertLog")) {        // Create the alert log collection if it does not exist
+        await globalThis.mongoDb.createCollection(
+            "alertLog",
+            {
+                timeseries: {
+                    timeField: "timestamp",
+                    metaField: "meta"
+                },
+                expireAfterSeconds: 7889400 // Expire after 3 months
+            }
+        )
+        console.log("MongoDB: Created alertLog")
     }
 
     // Note: Users are now seeded manually via /api/seed endpoint
