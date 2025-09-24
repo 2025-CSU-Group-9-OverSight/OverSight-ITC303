@@ -17,6 +17,7 @@ This project is crucial for IT infrastructure monitoring, security enforcement, 
 
 ![Gantt Chart](/gantt_chart.png)
 
+
 ## Development
 
 **📖 [Complete Development Guide](./docs/DEVELOPMENT_GUIDE.md)**
