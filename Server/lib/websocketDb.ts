@@ -188,7 +188,8 @@ async function createAlert(deviceName: string, type: string, threshold: number, 
         meta: {
             type: type,
             deviceName: deviceName,
-            acknowledged: false
+            acknowledged: false,
+            timestamp: date
         },
         threshold: threshold,
         reading: reading,
