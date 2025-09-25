@@ -26,18 +26,17 @@ import {
 
 interface AlertData {
     _id: string;
-    id: string;
-    type: AlertType;
-    severity: AlertSeverity;
-    status: AlertStatus;
-    title: string;
-    description: string;
-    deviceName: string;
     timestamp: string;
-    acknowledgedBy?: string;
+    meta: {
+        type: string;
+        deviceName: string;
+        acknowledged: boolean;
+    };
+    threshold: number;
+    reading: number;
+    message: string;
     acknowledgedAt?: string;
     resolvedAt?: string;
-    metadata?: Record<string, any>;
 }
 
 export default function AlertsPage() {
@@ -46,7 +45,6 @@ export default function AlertsPage() {
     const [alerts, setAlerts] = useState<AlertData[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState<string>("all");
-    const [filterSeverity, setFilterSeverity] = useState<string>("all");
 
     useEffect(() => {
         if (status === "loading") return;
@@ -55,14 +53,13 @@ export default function AlertsPage() {
 
     useEffect(() => {
         fetchAlerts();
-    }, [filterStatus, filterSeverity]);
+    }, [filterStatus]);
 
     const fetchAlerts = async () => {
         try {
             setLoading(true);
             const params = new URLSearchParams();
             if (filterStatus !== "all") params.append("status", filterStatus);
-            if (filterSeverity !== "all") params.append("severity", filterSeverity);
             
             const response = await fetch(`/api/alertLog?${params.toString()}`);
             const data = await response.json();
@@ -74,7 +71,7 @@ export default function AlertsPage() {
         }
     };
 
-    const updateAlertStatus = async (alertId: string, newStatus: AlertStatus) => {
+    const updateAlertStatus = async (alertId: string, newStatus: string) => {
         try {
             await fetch(`/api/alertLog?id=${alertId}`, {
                 method: "PUT",
@@ -87,65 +84,41 @@ export default function AlertsPage() {
         }
     };
 
-    const getSeverityIcon = (severity: AlertSeverity) => {
-        switch (severity) {
-            case AlertSeverity.CRITICAL:
-                return <XCircle className="h-4 w-4 text-red-500" />;
-            case AlertSeverity.HIGH:
-                return <AlertTriangle className="h-4 w-4 text-orange-500" />;
-            case AlertSeverity.MEDIUM:
-                return <AlertCircle className="h-4 w-4 text-yellow-500" />;
-            case AlertSeverity.LOW:
-                return <Info className="h-4 w-4 text-blue-500" />;
-            default:
-                return <Info className="h-4 w-4 text-gray-500" />;
-        }
-    };
-
-    const getSeverityColor = (severity: AlertSeverity) => {
-        switch (severity) {
-            case AlertSeverity.CRITICAL:
-                return "destructive";
-            case AlertSeverity.HIGH:
-                return "destructive";
-            case AlertSeverity.MEDIUM:
-                return "default";
-            case AlertSeverity.LOW:
-                return "default";
-            default:
-                return "default";
-        }
-    };
-
-    const getTypeIcon = (type: AlertType) => {
+    const getTypeIcon = (type: string) => {
         switch (type) {
-            case AlertType.CPU_HIGH:
+            case 'cpu':
                 return <Cpu className="h-4 w-4" />;
-            case AlertType.MEMORY_HIGH:
+            case 'ram':
                 return <MemoryStick className="h-4 w-4" />;
-            case AlertType.DISK_HIGH:
+            case 'disk':
                 return <HardDrive className="h-4 w-4" />;
-            case AlertType.PROCESS_CRASH:
-                return <Monitor className="h-4 w-4" />;
-            case AlertType.SERVICE_DOWN:
-                return <Monitor className="h-4 w-4" />;
-            case AlertType.CONNECTION_LOST:
-                return <WifiOff className="h-4 w-4" />;
             default:
                 return <AlertCircle className="h-4 w-4" />;
         }
     };
 
-    const getStatusBadge = (status: AlertStatus) => {
-        switch (status) {
-            case AlertStatus.ACTIVE:
-                return <Badge variant="destructive">Active</Badge>;
-            case AlertStatus.ACKNOWLEDGED:
-                return <Badge variant="secondary">Acknowledged</Badge>;
-            case AlertStatus.RESOLVED:
-                return <Badge variant="outline">Resolved</Badge>;
-            default:
-                return <Badge variant="outline">{status}</Badge>;
+    const getSeverityIcon = (reading: number, threshold: number) => {
+        const percentage = (reading / threshold) * 100;
+        if (percentage >= 100) return <XCircle className="h-4 w-4 text-red-500" />;
+        if (percentage >= 90) return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+        if (percentage >= 80) return <AlertCircle className="h-4 w-4 text-yellow-500" />;
+        return <Info className="h-4 w-4 text-blue-500" />;
+    };
+
+    const getSeverityColor = (reading: number, threshold: number) => {
+        const percentage = (reading / threshold) * 100;
+        if (percentage >= 100) return "destructive";
+        if (percentage >= 90) return "destructive";
+        return "default";
+    };
+
+    const getStatusBadge = (acknowledged: boolean, resolvedAt?: string) => {
+        if (resolvedAt) {
+            return <Badge variant="secondary">Resolved</Badge>;
+        } else if (acknowledged) {
+            return <Badge variant="default">Acknowledged</Badge>;
+        } else {
+            return <Badge variant="destructive">Active</Badge>;
         }
     };
 
@@ -179,18 +152,6 @@ export default function AlertsPage() {
                                 </SelectContent>
                             </Select>
                             
-                            <Select value={filterSeverity} onValueChange={setFilterSeverity}>
-                                <SelectTrigger className="w-48">
-                                    <SelectValue placeholder="Filter by severity" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Severities</SelectItem>
-                                    <SelectItem value="critical">Critical</SelectItem>
-                                    <SelectItem value="high">High</SelectItem>
-                                    <SelectItem value="medium">Medium</SelectItem>
-                                    <SelectItem value="low">Low</SelectItem>
-                                </SelectContent>
-                            </Select>
                             
                             <Button onClick={fetchAlerts} variant="outline">
                                 Refresh
@@ -214,7 +175,7 @@ export default function AlertsPage() {
                                 <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
                                 <h3 className="text-lg font-semibold mb-2">No Alerts Found</h3>
                                 <p className="text-muted-foreground">
-                                    {filterStatus !== "all" || filterSeverity !== "all" 
+                                    {filterStatus !== "all" 
                                         ? "No alerts match your current filters." 
                                         : "All systems are running normally."}
                                 </p>
@@ -222,51 +183,51 @@ export default function AlertsPage() {
                         ) : (
                             <div className="space-y-4">
                                 {alerts.map((alert) => (
-                                    <Alert key={alert._id} variant={getSeverityColor(alert.severity)}>
+                                    <Alert key={alert._id} variant={getSeverityColor(alert.reading, alert.threshold)}>
                                         <div className="flex items-start justify-between w-full">
                                             <div className="flex items-start space-x-3 flex-1">
-                                                {getSeverityIcon(alert.severity)}
+                                                {getSeverityIcon(alert.reading, alert.threshold)}
                                                 <div className="flex-1">
                                                     <div className="flex items-center space-x-2 mb-1">
-                                                        {getTypeIcon(alert.type)}
+                                                        {getTypeIcon(alert.meta.type)}
                                                         <AlertTitle className="text-base">
-                                                            {alert.title}
+                                                            {alert.meta.type.toUpperCase()} Alert
                                                         </AlertTitle>
-                                                        {getStatusBadge(alert.status)}
+                                                        {getStatusBadge(alert.meta.acknowledged, alert.resolvedAt)}
                                                     </div>
                                                     <AlertDescription className="text-sm">
-                                                        {alert.description}
+                                                        {alert.message}
                                                     </AlertDescription>
                                                     <div className="flex items-center space-x-4 mt-2 text-xs text-muted-foreground">
                                                         <span className="flex items-center space-x-1">
                                                             <Monitor className="h-3 w-3" />
-                                                            <span>{alert.deviceName}</span>
+                                                            <span>{alert.meta.deviceName}</span>
                                                         </span>
                                                         <span className="flex items-center space-x-1">
                                                             <Clock className="h-3 w-3" />
                                                             <span>{new Date(alert.timestamp).toLocaleString()}</span>
                                                         </span>
-                                                        {alert.acknowledgedBy && (
-                                                            <span>Acknowledged by {alert.acknowledgedBy}</span>
-                                                        )}
+                                                        <span>
+                                                            Reading: {alert.reading}% (Threshold: {alert.threshold}%)
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="flex space-x-2 ml-4">
-                                                {alert.status === AlertStatus.ACTIVE && (
+                                                {!alert.meta.acknowledged && (
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
-                                                        onClick={() => updateAlertStatus(alert._id, AlertStatus.ACKNOWLEDGED)}
+                                                        onClick={() => updateAlertStatus(alert._id, "acknowledged")}
                                                     >
                                                         Acknowledge
                                                     </Button>
                                                 )}
-                                                {alert.status === AlertStatus.ACKNOWLEDGED && (
+                                                {alert.meta.acknowledged && !alert.resolvedAt && (
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
-                                                        onClick={() => updateAlertStatus(alert._id, AlertStatus.RESOLVED)}
+                                                        onClick={() => updateAlertStatus(alert._id, "resolved")}
                                                     >
                                                         Resolve
                                                     </Button>

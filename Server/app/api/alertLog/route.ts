@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import getDb from '@/lib/getDb';
-import { Alert, AlertStatus, AlertSeverity, AlertType } from '@/types/types';
+import { AlertStatus } from '@/types/types';
 import { ObjectId } from 'mongodb';
 
 // GET /api/alertLog - Get all alerts with optional filtering
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
-        const status = searchParams.get('status') as AlertStatus;
-        const severity = searchParams.get('severity') as AlertSeverity;
+        const status = searchParams.get('status');
+        const severity = searchParams.get('severity');
         const deviceName = searchParams.get('deviceName');
         const limit = parseInt(searchParams.get('limit') || '50');
         const page = parseInt(searchParams.get('page') || '1');
@@ -17,11 +17,10 @@ export async function GET(request: Request) {
         const db = await getDb();
         const alertLog = db.collection('alertLog');
 
-        // Build filter query
+        // Build filter query - match database team's schema
         const filter: any = {};
-        if (status) filter.status = status;
-        if (severity) filter.severity = severity;
-        if (deviceName) filter.deviceName = deviceName;
+        if (status) filter['meta.acknowledged'] = status === 'acknowledged';
+        if (deviceName) filter['meta.deviceName'] = deviceName;
 
         // Get total count for pagination
         const totalCount = await alertLog.countDocuments(filter);
@@ -53,35 +52,12 @@ export async function GET(request: Request) {
     }
 }
 
-// POST /api/alertLog - Create a new alert
+// POST /api/alertLog - Create a new alert (handled by database team)
 export async function POST(request: Request) {
-    try {
-        const alertData = await request.json();
-        
-        const db = await getDb();
-        const alertLog = db.collection('alertLog');
-
-        const newAlert: Omit<Alert, 'id'> = {
-            ...alertData,
-            id: new ObjectId().toString(),
-            timestamp: new Date(),
-            status: AlertStatus.ACTIVE
-        };
-
-        const result = await alertLog.insertOne(newAlert);
-
-        return NextResponse.json({
-            message: 'Alert created successfully',
-            alert: { ...newAlert, _id: result.insertedId }
-        });
-
-    } catch (error) {
-        console.error('Error creating alert:', error);
-        return NextResponse.json(
-            { error: 'Failed to create alert' },
-            { status: 500 }
-        );
-    }
+    return NextResponse.json(
+        { message: 'Alert creation is handled by the database team' },
+        { status: 501 }
+    );
 }
 
 // PUT /api/alertLog - Update an alert
@@ -108,10 +84,12 @@ export async function PUT(request: Request) {
             updatedAt: new Date()
         };
 
-        // Handle status-specific timestamps
-        if (updateData.status === AlertStatus.ACKNOWLEDGED) {
+        // Handle status-specific timestamps - match database team's schema
+        if (updateData.status === 'acknowledged') {
+            updateFields['meta.acknowledged'] = true;
             updateFields.acknowledgedAt = new Date();
-        } else if (updateData.status === AlertStatus.RESOLVED) {
+        } else if (updateData.status === 'resolved') {
+            updateFields['meta.acknowledged'] = true;
             updateFields.resolvedAt = new Date();
         }
 
