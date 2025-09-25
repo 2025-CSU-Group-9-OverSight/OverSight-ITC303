@@ -62,7 +62,7 @@ async function testMigration() {
             );
             console.log('❌ Update succeeded (unexpected for time-series)');
         } catch (error) {
-            console.log('✅ Update failed as expected:', error.message);
+            console.log('✅ Update failed as expected:', error instanceof Error ? error.message : String(error));
         }
         
         // Now migrate to regular collection
@@ -90,8 +90,7 @@ async function testMigration() {
         // Re-insert with new schema
         const updatedAlerts = existingAlerts.map(alert => ({
             ...alert,
-            acknowledgedAt: null,
-            resolvedAt: null
+            acknowledgedAt: null
         }));
         
         await db.collection(testCollectionName).insertMany(updatedAlerts);
@@ -106,7 +105,7 @@ async function testMigration() {
             );
             console.log('✅ Update succeeded! Modified count:', result.modifiedCount);
         } catch (error) {
-            console.log('❌ Update failed:', error.message);
+            console.log('❌ Update failed:', error instanceof Error ? error.message : String(error));
         }
         
         // Verify the update
