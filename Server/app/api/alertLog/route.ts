@@ -10,7 +10,7 @@ export async function GET(request: Request) {
         const status = searchParams.get('status');
         const severity = searchParams.get('severity');
         const deviceName = searchParams.get('deviceName');
-        const timeFilter = searchParams.get('timeFilter') || '7days'; // Default to last 7 days
+        const timeFilter = searchParams.get('timeFilter') || '24hours'; // Default to last 24 hours
         const limit = parseInt(searchParams.get('limit') || '50');
         const page = parseInt(searchParams.get('page') || '1');
         const skip = (page - 1) * limit;

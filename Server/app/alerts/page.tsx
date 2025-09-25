@@ -45,7 +45,7 @@ export default function AlertsPage() {
     const [alerts, setAlerts] = useState<AlertData[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState<string>("all");
-    const [timeFilter, setTimeFilter] = useState<string>("7days");
+    const [timeFilter, setTimeFilter] = useState<string>("24hours");
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
@@ -208,7 +208,7 @@ export default function AlertsPage() {
                                 size="sm"
                                 onClick={() => {
                                     setFilterStatus("all");
-                                    setTimeFilter("7days");
+                                    setTimeFilter("24hours");
                                 }}
                             >
                                 Reset Filters
