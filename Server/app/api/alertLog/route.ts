@@ -10,6 +10,7 @@ export async function GET(request: Request) {
         const status = searchParams.get('status');
         const severity = searchParams.get('severity');
         const deviceName = searchParams.get('deviceName');
+        const timeFilter = searchParams.get('timeFilter') || '7days'; // Default to last 7 days
         const limit = parseInt(searchParams.get('limit') || '50');
         const page = parseInt(searchParams.get('page') || '1');
         const skip = (page - 1) * limit;
@@ -17,24 +18,75 @@ export async function GET(request: Request) {
         const db = await getDb();
         const alertLog = db.collection('alertLog');
 
+        // Build time filter
+        const now = new Date();
+        let timeThreshold: Date;
+        
+        switch (timeFilter) {
+            case '24hours':
+                timeThreshold = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                break;
+            case '7days':
+                timeThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                break;
+            case '30days':
+                timeThreshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                break;
+            case 'all':
+                timeThreshold = new Date(0); // All time
+                break;
+            default:
+                timeThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        }
+
         // Build filter query - match database team's schema
-        const filter: any = {};
-        if (status) filter['meta.acknowledged'] = status === 'acknowledged';
+        const filter: any = {
+            timestamp: { $gte: timeThreshold }
+        };
+        
+        if (status) {
+            if (status === 'acknowledged') {
+                filter['meta.acknowledged'] = true;
+            } else if (status === 'unacknowledged') {
+                filter['meta.acknowledged'] = { $ne: true };
+            }
+        }
         if (deviceName) filter['meta.deviceName'] = deviceName;
 
         // Get total count for pagination
         const totalCount = await alertLog.countDocuments(filter);
 
-        // Get alerts with pagination
+        // Get alerts with smart prioritization: unacknowledged first, then by timestamp
         const alerts = await alertLog
             .find(filter)
-            .sort({ timestamp: -1 })
+            .sort({ 
+                'meta.acknowledged': 1,  // false (unacknowledged) first, then true (acknowledged)
+                timestamp: -1            // Most recent first within each group
+            })
             .skip(skip)
             .limit(limit)
             .toArray();
 
+        // Process alerts for UI display with auto-archiving logic
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        
+        const alertsWithStatus = alerts.map(alert => {
+            let currentStatus = alert.meta?.acknowledged ? 'acknowledged' : 'unacknowledged';
+            
+            // Auto-archive old acknowledged alerts (older than 30 days)
+            if (alert.meta?.acknowledged && alert.timestamp < thirtyDaysAgo) {
+                currentStatus = 'archived';
+            }
+            
+            return {
+                ...alert,
+                currentStatus,
+                acknowledgedAt: alert.acknowledgedAt || null
+            };
+        });
+
         return NextResponse.json({
-            alerts,
+            alerts: alertsWithStatus,
             pagination: {
                 totalCount,
                 page,
@@ -60,7 +112,7 @@ export async function POST(request: Request) {
     );
 }
 
-// PUT /api/alertLog - Update an alert
+// PUT /api/alertLog - Update an alert status (workaround for time-series collection)
 export async function PUT(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
@@ -74,23 +126,16 @@ export async function PUT(request: Request) {
         }
 
         const updateData = await request.json();
-        
         const db = await getDb();
         const alertLog = db.collection('alertLog');
-
-        // Add updated timestamp
-        const updateFields = {
-            ...updateData,
-            updatedAt: new Date()
+        
+        // Now we can directly update the alertLog collection
+        const updateFields: any = {
+            'meta.acknowledged': updateData.status === 'acknowledged'
         };
 
-        // Handle status-specific timestamps - match database team's schema
         if (updateData.status === 'acknowledged') {
-            updateFields['meta.acknowledged'] = true;
             updateFields.acknowledgedAt = new Date();
-        } else if (updateData.status === 'resolved') {
-            updateFields['meta.acknowledged'] = true;
-            updateFields.resolvedAt = new Date();
         }
 
         const result = await alertLog.updateOne(
@@ -106,13 +151,13 @@ export async function PUT(request: Request) {
         }
 
         return NextResponse.json({
-            message: 'Alert updated successfully'
+            message: 'Alert status updated successfully'
         });
 
     } catch (error) {
-        console.error('Error updating alert:', error);
+        console.error('Error updating alert status:', error);
         return NextResponse.json(
-            { error: 'Failed to update alert' },
+            { error: 'Failed to update alert status' },
             { status: 500 }
         );
     }

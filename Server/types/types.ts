@@ -22,9 +22,9 @@ export enum AlertSeverity {
 }
 
 export enum AlertStatus {
-    ACTIVE = "active",
+    UNACKNOWLEDGED = "unacknowledged",
     ACKNOWLEDGED = "acknowledged",
-    RESOLVED = "resolved"
+    ARCHIVED = "archived"
 }
 
 export enum AlertType {

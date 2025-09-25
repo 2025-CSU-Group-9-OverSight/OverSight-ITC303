@@ -36,7 +36,7 @@ interface AlertData {
     reading: number;
     message: string;
     acknowledgedAt?: string;
-    resolvedAt?: string;
+    currentStatus: string;
 }
 
 export default function AlertsPage() {
@@ -45,6 +45,11 @@ export default function AlertsPage() {
     const [alerts, setAlerts] = useState<AlertData[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState<string>("all");
+    const [timeFilter, setTimeFilter] = useState<string>("7days");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [alertsPerPage, setAlertsPerPage] = useState(10);
 
     useEffect(() => {
         if (status === "loading") return;
@@ -53,17 +58,22 @@ export default function AlertsPage() {
 
     useEffect(() => {
         fetchAlerts();
-    }, [filterStatus]);
+    }, [filterStatus, timeFilter, currentPage, alertsPerPage]);
 
     const fetchAlerts = async () => {
         try {
             setLoading(true);
             const params = new URLSearchParams();
             if (filterStatus !== "all") params.append("status", filterStatus);
+            if (timeFilter !== "all") params.append("timeFilter", timeFilter);
+            params.append("page", currentPage.toString());
+            params.append("limit", alertsPerPage.toString());
             
             const response = await fetch(`/api/alertLog?${params.toString()}`);
             const data = await response.json();
             setAlerts(data.alerts || []);
+            setTotalPages(data.pagination?.totalPages || 1);
+            setTotalCount(data.pagination?.totalCount || 0);
         } catch (error) {
             console.error("Error fetching alerts:", error);
         } finally {
@@ -112,13 +122,15 @@ export default function AlertsPage() {
         return "default";
     };
 
-    const getStatusBadge = (acknowledged: boolean, resolvedAt?: string) => {
-        if (resolvedAt) {
-            return <Badge variant="secondary">Resolved</Badge>;
-        } else if (acknowledged) {
-            return <Badge variant="default">Acknowledged</Badge>;
-        } else {
-            return <Badge variant="destructive">Active</Badge>;
+    const getStatusBadge = (currentStatus: string) => {
+        switch (currentStatus) {
+            case 'acknowledged':
+                return <Badge variant="secondary">Acknowledged</Badge>;
+            case 'archived':
+                return <Badge variant="outline">Archived</Badge>;
+            case 'unacknowledged':
+            default:
+                return <Badge variant="destructive">Unacknowledged</Badge>;
         }
     };
 
@@ -146,26 +158,80 @@ export default function AlertsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Statuses</SelectItem>
-                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="unacknowledged">Unacknowledged</SelectItem>
                                     <SelectItem value="acknowledged">Acknowledged</SelectItem>
-                                    <SelectItem value="resolved">Resolved</SelectItem>
                                 </SelectContent>
                             </Select>
                             
+                            <Select value={timeFilter} onValueChange={setTimeFilter}>
+                                <SelectTrigger className="w-48">
+                                    <SelectValue placeholder="Time period" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="24hours">Last 24 Hours</SelectItem>
+                                    <SelectItem value="7days">Last 7 Days</SelectItem>
+                                    <SelectItem value="30days">Last 30 Days</SelectItem>
+                                    <SelectItem value="all">All Time</SelectItem>
+                                </SelectContent>
+                            </Select>
                             
                             <Button onClick={fetchAlerts} variant="outline">
                                 Refresh
+                            </Button>
+                        </div>
+                        
+                        {/* Quick Filters */}
+                        <div className="flex gap-2 mt-4">
+                            <Button 
+                                variant={filterStatus === "unacknowledged" ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setFilterStatus("unacknowledged")}
+                            >
+                                Unacknowledged Only
+                            </Button>
+                            <Button 
+                                variant={timeFilter === "24hours" ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setTimeFilter("24hours")}
+                            >
+                                Last 24h
+                            </Button>
+                            <Button 
+                                variant={timeFilter === "7days" ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setTimeFilter("7days")}
+                            >
+                                Last 7d
+                            </Button>
+                            <Button 
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setFilterStatus("all");
+                                    setTimeFilter("7days");
+                                }}
+                            >
+                                Reset Filters
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Alerts List */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>System Alerts ({alerts.length})</CardTitle>
-                    </CardHeader>
-                    <CardContent>
+            <Card>
+                <CardHeader>
+                        <CardTitle>
+                            System Alerts ({totalCount} total)
+                            {timeFilter !== 'all' && (
+                                <span className="text-sm font-normal text-muted-foreground ml-2">
+                                    - {timeFilter === '24hours' ? 'Last 24 Hours' : 
+                                        timeFilter === '7days' ? 'Last 7 Days' : 
+                                        timeFilter === '30days' ? 'Last 30 Days' : timeFilter}
+                                </span>
+                            )}
+                        </CardTitle>
+                </CardHeader>
+                <CardContent>
                         {loading ? (
                             <div className="flex justify-center py-8">
                                 <div className="text-muted-foreground">Loading alerts...</div>
@@ -193,7 +259,7 @@ export default function AlertsPage() {
                                                         <AlertTitle className="text-base">
                                                             {alert.meta.type.toUpperCase()} Alert
                                                         </AlertTitle>
-                                                        {getStatusBadge(alert.meta.acknowledged, alert.resolvedAt)}
+                                                        {getStatusBadge(alert.currentStatus)}
                                                     </div>
                                                     <AlertDescription className="text-sm">
                                                         {alert.message}
@@ -214,7 +280,7 @@ export default function AlertsPage() {
                                                 </div>
                                             </div>
                                             <div className="flex space-x-2 ml-4">
-                                                {!alert.meta.acknowledged && (
+                                                {alert.currentStatus === 'unacknowledged' && (
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
@@ -223,23 +289,103 @@ export default function AlertsPage() {
                                                         Acknowledge
                                                     </Button>
                                                 )}
-                                                {alert.meta.acknowledged && !alert.resolvedAt && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => updateAlertStatus(alert._id, "resolved")}
-                                                    >
-                                                        Resolve
-                                                    </Button>
-                                                )}
                                             </div>
                                         </div>
                                     </Alert>
                                 ))}
                             </div>
                         )}
-                    </CardContent>
-                </Card>
+                        
+                        {/* Bulk Actions */}
+                        {alerts.length > 0 && (
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                                <div className="flex items-center space-x-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            // Acknowledge all unacknowledged alerts on current page
+                                            const unacknowledgedAlerts = alerts.filter(alert => alert.currentStatus === 'unacknowledged');
+                                            unacknowledgedAlerts.forEach(alert => updateAlertStatus(alert._id, "acknowledged"));
+                                        }}
+                                        disabled={!alerts.some(alert => alert.currentStatus === 'unacknowledged')}
+                                    >
+                                        Acknowledge All Unacknowledged
+                                    </Button>
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                    {alerts.filter(alert => alert.currentStatus === 'unacknowledged').length} unacknowledged, {alerts.filter(alert => alert.currentStatus === 'acknowledged').length} acknowledged, {alerts.filter(alert => alert.currentStatus === 'archived').length} archived
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                                <div className="flex items-center space-x-4">
+                                    <div className="flex items-center space-x-2">
+                                        <span className="text-sm text-muted-foreground">Alerts per page:</span>
+                                        <Select value={alertsPerPage.toString()} onValueChange={(value) => {
+                                            setAlertsPerPage(parseInt(value));
+                                            setCurrentPage(1); // Reset to first page when changing page size
+                                        }}>
+                                            <SelectTrigger className="w-20">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="5">5</SelectItem>
+                                                <SelectItem value="10">10</SelectItem>
+                                                <SelectItem value="20">20</SelectItem>
+                                                <SelectItem value="50">50</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                        Showing {((currentPage - 1) * alertsPerPage) + 1} to {Math.min(currentPage * alertsPerPage, totalCount)} of {totalCount} alerts
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center space-x-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(1)}
+                                        disabled={currentPage === 1}
+                                    >
+                                        First
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                    >
+                                        Previous
+                                    </Button>
+                                    <span className="text-sm text-muted-foreground">
+                                        Page {currentPage} of {totalPages}
+                                    </span>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(currentPage + 1)}
+                                        disabled={currentPage === totalPages}
+                                    >
+                                        Next
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(totalPages)}
+                                        disabled={currentPage === totalPages}
+                                    >
+                                        Last
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                </CardContent>
+            </Card>
             </div>
         </DashboardLayout>
     );

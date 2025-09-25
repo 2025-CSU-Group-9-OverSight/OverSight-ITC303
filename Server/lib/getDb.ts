@@ -75,19 +75,17 @@ export default async function getDb(): Promise<Db> {
         console.log("MongoDB: Created serviceLog")
     }
 
-    if(!collections.find(collection=> collection.name === "alertLog")) {        // Create the alert log collection if it does not exist
-        await globalThis.mongoDb.createCollection(
-            "alertLog",
-            {
-                timeseries: {
-                    timeField: "timestamp",
-                    metaField: "meta"
-                },
-                expireAfterSeconds: 7889400 // Expire after 3 months
-            }
-        )
-        console.log("MongoDB: Created alertLog")
-    }
+        if(!collections.find(collection=> collection.name === "alertLog")) {        // Create the alert log collection if it does not exist
+            await globalThis.mongoDb.createCollection("alertLog")
+            console.log("MongoDB: Created alertLog")
+            
+            // Add TTL index for data expiration (3 months)
+            await globalThis.mongoDb.collection("alertLog").createIndex(
+                { "timestamp": 1 }, 
+                { expireAfterSeconds: 7889400 }
+            )
+            console.log("MongoDB: Created TTL index for alertLog")
+        }
 
     // Note: Users are now seeded manually via /api/seed endpoint
 
