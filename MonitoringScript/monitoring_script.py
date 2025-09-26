@@ -4,6 +4,8 @@ import websockets
 import asyncio
 import datetime
 import platform
+import os
+import ssl
 
 deviceDetails = platform.uname()
 
@@ -35,29 +37,55 @@ data = {
 }
 
 async def main():
-    # Default settings
-    config = {
-        "uri": "ws://localhost:3000/api/ws/monitoring",
-        "connection_attempts": 20,
-        "ping_interval": 20,
-        "ping_timeout": 20
-    }
-
     configFile = "config.json"
 
+    # Load configuration from config.json file
     try:
         with open(configFile, 'r') as file:
             config = json.load(file)
-            # Input validation
-            if isinstance(config["uri"], str) & isinstance(config["connection_attempts"], int) & isinstance(config["ping_interval"], int) & isinstance(config["ping_timeout"], int):
-                config["connection_attempts"] = abs(config["connection_attempts"])
-                config["ping_interval"] = abs(config["ping_interval"])
-                config["ping_timeout"] = abs(config["ping_timeout"])
-                print("Configuration file successfully loaded.")
-            else:
-                raise Exception
+            print("Configuration file successfully loaded.")
+    except FileNotFoundError:
+        print(f"ERROR: Configuration file '{configFile}' not found.")
+        print("Please create config.json from config.example.json and configure it with your settings.")
+        return
+    except json.JSONDecodeError as e:
+        print(f"ERROR: Invalid JSON in configuration file: {e}")
+        return
     except Exception as e:
-        print("Error loading configuration file: " + str(e) + ". Attempting to run using default values...")
+        print(f"ERROR: Failed to load configuration file: {e}")
+        return
+
+    # Validate required configuration fields
+    required_fields = ["uri", "connection_attempts", "ping_interval", "ping_timeout", "bearer_token"]
+    missing_fields = [field for field in required_fields if field not in config]
+    
+    if missing_fields:
+        print(f"ERROR: Missing required configuration fields: {', '.join(missing_fields)}")
+        print("Please check your config.json file against config.example.json")
+        return
+
+    # Validate field types and values
+    try:
+        if not isinstance(config["uri"], str) or not config["uri"].strip():
+            raise ValueError("uri must be a non-empty string")
+        if not isinstance(config["connection_attempts"], int) or config["connection_attempts"] < 1:
+            raise ValueError("connection_attempts must be a positive integer")
+        if not isinstance(config["ping_interval"], int) or config["ping_interval"] < 1:
+            raise ValueError("ping_interval must be a positive integer")
+        if not isinstance(config["ping_timeout"], int) or config["ping_timeout"] < 1:
+            raise ValueError("ping_timeout must be a positive integer")
+        if not isinstance(config["bearer_token"], str) or not config["bearer_token"].strip():
+            raise ValueError("bearer_token must be a non-empty string")
+            
+        # Ensure positive values
+        config["connection_attempts"] = abs(config["connection_attempts"])
+        config["ping_interval"] = abs(config["ping_interval"])
+        config["ping_timeout"] = abs(config["ping_timeout"])
+        
+    except ValueError as e:
+        print(f"ERROR: Invalid configuration: {e}")
+        print("Please check your config.json file against config.example.json")
+        return
 
     print("Attempting to connect to server at URI " + config["uri"] + "...")
 
@@ -65,7 +93,39 @@ async def main():
 
     while connectionAttempts < (config["connection_attempts"] + 1):
         try:
-            async with websockets.connect(uri=config["uri"], ping_interval=config["ping_interval"], ping_timeout=config["ping_timeout"]) as websocket:
+            # Setup SSL context for self-signed certificates
+            ssl_context = None
+            if config["uri"].startswith("wss://"):
+                ssl_context = ssl.create_default_context()
+                # Configure for self-signed certificates (OverSight uses self-signed certs)
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+
+            # Setup authentication headers
+            headers = {
+                "Authorization": f"Bearer {config['bearer_token']}"
+            }
+
+            # Try with extra_headers first (newer websockets versions)
+            try:
+                websocket = await websockets.connect(
+                    uri=config["uri"], 
+                    ping_interval=config["ping_interval"], 
+                    ping_timeout=config["ping_timeout"],
+                    ssl=ssl_context,
+                    extra_headers=headers
+                )
+            except TypeError:
+                # Fallback for older websockets versions - use query parameter for token
+                uri_with_token = f"{config['uri']}?token={config['bearer_token']}"
+                websocket = await websockets.connect(
+                    uri=uri_with_token, 
+                    ping_interval=config["ping_interval"], 
+                    ping_timeout=config["ping_timeout"],
+                    ssl=ssl_context
+                )
+            
+            async with websocket:
                 print("Connection to server at URI " + config["uri"] + " successful.")
                 connectionAttempts = 1
                 while True:

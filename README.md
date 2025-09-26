@@ -48,7 +48,42 @@ For specific development tasks, jump to these sections:
 - [Common Commands](./docs/DEVELOPMENT_GUIDE.md#common-commands)
 - [Making Commits](./docs/DEVELOPMENT_GUIDE.md#conventional-commits)
 
-## Component Setup
+## Documentation
 
-- **Server**: See [Development Setup](./docs/DEVELOPMENT_GUIDE.md#development-setup) (NextJS application)
-- **Monitoring Scripts**: See [Python Dependencies](./docs/DEVELOPMENT_GUIDE.md#development-setup) (Poetry setup)  
+### 🚀 **[Deployment Guide](./docs/DEPLOYMENT.md)**
+Complete deployment instructions covering:
+- Database setup (MongoDB installation and configuration)
+- SSL certificate generation and configuration  
+- Server deployment and environment configuration
+- Monitoring script setup and configuration
+- Production deployment checklist
+
+### 🔒 **[Security Guide](./docs/SECURITY.md)**
+Comprehensive security documentation covering:
+- SSL/TLS encryption implementation
+- Bearer token authentication system
+- Security best practices and threat model
+- Configuration security and token management
+
+## Quick Start
+
+```bash
+# 1. Generate authentication tokens
+make generate-all-tokens
+
+# 2. Generate SSL certificates  
+make setup-ssl
+
+# 3. Install and deploy
+make install && make build && make start
+```
+
+## Security Features
+
+- 🔒 **WSS (WebSocket Secure)** with self-signed certificates
+- 🛡️ **Bearer Token Authentication** for all WebSocket connections
+- 🔑 **NextAuth JWT Encryption** for session management
+- 🗄️ **MongoDB Authentication** with role-based access control
+- 🖥️ **Admin Security UI** - certificate expiry monitoring and token rotation
+- 📋 **Defense in Depth** - multiple security layers
+

@@ -1,6 +1,6 @@
 # OverSight-ITC303 Project Makefile
 
-.PHONY: help install install-server install-monitor dev build start lint type-check test run-monitor clean commit release
+.PHONY: help install install-server install-monitor dev build start lint type-check test run-monitor clean commit release generate-token generate-nextauth generate-all-tokens setup-ssl check-expiry
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -24,7 +24,7 @@ build: ## Build the application
 	cd Server && npm run build
 
 start: ## Start production server
-	cd Server && npm run start
+	cd Server && sudo npm run start
 
 lint: ## Run linting for all components
 	cd MonitoringScript && poetry run black .
@@ -41,6 +41,21 @@ test: ## Run tests for all components
 
 run-monitor: ## Run the monitoring scripts
 	cd MonitoringScript && poetry run python -m oversight_monitoring.monitoring_script
+
+generate-token: ## Generate a secure WebSocket bearer token
+	node generate-token.js
+
+generate-nextauth: ## Generate a NextAuth secret
+	node generate-token.js nextauth
+
+generate-all-tokens: ## Generate both WebSocket and NextAuth tokens
+	node generate-token.js all
+
+setup-ssl: ## Generate self-signed SSL certificates for HTTPS/WSS
+	./setup-ssl.sh
+
+check-expiry: ## Check SSL certificate expiration dates
+	./check-expiry.sh
 
 clean: ## Clean node_modules and build artifacts
 	-rm -rf node_modules
