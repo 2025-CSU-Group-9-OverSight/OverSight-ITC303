@@ -187,11 +187,13 @@ NODE_ENV=production
 
 # NextAuth Configuration (from make generate-all-tokens)
 NEXTAUTH_SECRET=your_generated_nextauth_secret_here
-NEXTAUTH_URL=https://your-hostname:3000
+NEXTAUTH_URL=https://your-hostname
 
 # Server Configuration
 HOSTNAME=your-hostname
-PORT=3000
+# PORT=443                     # Production HTTPS (default, can be omitted)
+# PORT=80                      # Production HTTP (if USE_HTTPS=false)
+# PORT=3000                    # Development/custom port
 
 # SSL Configuration (from make setup-ssl)
 USE_HTTPS=true
@@ -214,10 +216,10 @@ npm run build
 npm run start
 
 # In another terminal, seed the database
-curl -X POST https://your-hostname:3000/api/seed
+curl -X POST https://your-hostname/api/seed -k
 
 # Verify seeding worked
-curl https://your-hostname:3000/api/seed
+curl https://your-hostname/api/seed -k
 ```
 
 **Template Users Created:**
@@ -246,7 +248,7 @@ Edit `config.json` with your WebSocket token:
 
 ```json
 {
-    "uri": "wss://your-hostname:3000/api/ws/monitoring",
+    "uri": "wss://your-hostname/api/ws/monitoring",
     "connection_attempts": 20,
     "ping_interval": 20,
     "ping_timeout": 20,
@@ -292,20 +294,20 @@ cd MonitoringScript && poetry run python -m oversight_monitoring.monitoring_scri
    HTTPS Enabled: true
    WebSocket Authentication: Enabled
 🔒 HTTPS server created with SSL certificates
-▲ Ready on https://your-hostname:3000
+▲ Ready on https://your-hostname:443
 ✅ New authenticated monitoring client connected
 ```
 
 **Monitoring script logs should show:**
 ```
 Configuration file successfully loaded.
-Attempting to connect to server at URI wss://your-hostname:3000/api/ws/monitoring...
-Connection to server at URI wss://your-hostname:3000/api/ws/monitoring successful.
+Attempting to connect to server at URI wss://your-hostname/api/ws/monitoring...
+Connection to server at URI wss://your-hostname/api/ws/monitoring successful.
 Message Received: Connected
 ```
 
 **Web Dashboard:**
-- Navigate to `https://your-hostname:3000`
+- Navigate to `https://your-hostname`
 - Accept browser security warning for self-signed certificate
 - Login with template credentials
 - Verify live metrics are appearing
@@ -323,11 +325,11 @@ SSL_CERT_PATH=/path/to/dev/ssl/cert.pem
 MONGODB_URI=mongodb://localhost:27017/
 WS_BEARER_TOKEN=dev_websocket_token...
 NEXTAUTH_SECRET=dev_nextauth_secret...
-NEXTAUTH_URL=https://localhost:3000
+NEXTAUTH_URL=https://localhost
 
 # MonitoringScript/config.json
 {
-    "uri": "wss://localhost:3000/api/ws/monitoring",
+    "uri": "wss://localhost/api/ws/monitoring",
     "connection_attempts": 20,
     "ping_interval": 20,
     "ping_timeout": 20,
@@ -346,11 +348,11 @@ SSL_CERT_PATH=/etc/ssl/certs/oversight/cert.pem
 MONGODB_URI=mongodb://OverSight:prod_password@localhost:27017/
 WS_BEARER_TOKEN=prod_websocket_token...
 NEXTAUTH_SECRET=prod_nextauth_secret...
-NEXTAUTH_URL=https://monitor.yourdomain.com:3000
+NEXTAUTH_URL=https://monitor.yourdomain.com
 
 # MonitoringScript/config.json
 {
-    "uri": "wss://monitor.yourdomain.com:3000/api/ws/monitoring",
+    "uri": "wss://your-domain.com/api/ws/monitoring",
     "connection_attempts": 20,
     "ping_interval": 20,
     "ping_timeout": 20,
@@ -402,7 +404,7 @@ openssl x509 -in ssl/cert.pem -enddate -noout
 **Solution:**
 ```bash
 # Check server is running
-netstat -tlnp | grep :3000
+netstat -tlnp | grep :443
 
 # Check firewall
 sudo ufw status
