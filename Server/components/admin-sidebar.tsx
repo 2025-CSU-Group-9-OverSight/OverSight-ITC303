@@ -10,7 +10,8 @@ import {
   Users, 
   Settings,
   Activity,
-  Layers
+  Layers,
+  Shield
 } from "lucide-react";
 import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,6 +30,7 @@ export default function AdminSidebar() {
   const adminLinks = [
     { name: "Users", href: "/users", icon: Users },
     { name: "Settings", href: "/settings", icon: Settings },
+    { name: "Security", href: "/admin/security", icon: Shield },
   ];
 
   return (

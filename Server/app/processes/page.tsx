@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useAuthenticatedWebSocket } from "@/hooks/useAuthenticatedWebSocket";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -37,7 +38,6 @@ export default function ProcessesPage() {
     const [machineFilter, setMachineFilter] = useState<string>("all");
     const [machines, setMachines] = useState<string[]>([]);
     const [allProcesses, setAllProcesses] = useState<ProcessItem[]>([]);
-    const [isConnected, setIsConnected] = useState<boolean>(false);
     const [connectionError, setConnectionError] = useState<string | null>(null);
     const [dataAge, setDataAge] = useState<number>(0);
     const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
@@ -48,6 +48,117 @@ export default function ProcessesPage() {
     const { showToast } = useToast();
 
     const itemsPerPage = 50;
+
+    // Authenticated WebSocket connection for live process data
+    const { isConnected, send: wsSend, connectionError: wsConnectionError } = useAuthenticatedWebSocket({
+        path: '/api/ws/liveview',
+        onMessage: (data) => {
+            try {
+                // Skip if this doesn't look like process data
+                if (!data.processes || !Array.isArray(data.processes) || !data.device) {
+                    console.log('WebSocket message missing required fields:', Object.keys(data));
+                    return;
+                }
+                
+                const deviceName = data.device.deviceName;
+                const timestamp = new Date(data.timestamp);
+                
+                // Map process data to our interface
+                const mappedProcesses: ProcessItem[] = data.processes.map((proc: any, index: number) => {
+                    // Clean and validate CPU percentage
+                    let cpuPercent = proc.cpu_percent || 0;
+                    if (cpuPercent > 100) {
+                        cpuPercent = Math.min(cpuPercent, 100);
+                    }
+                    
+                    // Clean and validate memory percentage
+                    let memoryPercent = proc.memory_percent || 0;
+                    if (memoryPercent > 100) {
+                        memoryPercent = Math.min(memoryPercent, 100);
+                    }
+
+                    // Extract disk I/O data from io_counters
+                    let diskRead = 0;
+                    let diskWrite = 0;
+                    
+                    if (proc.io_counters && Array.isArray(proc.io_counters) && proc.io_counters.length >= 4) {
+                        // io_counters array: [read_count, write_count, read_bytes, write_bytes, read_chars, write_chars]
+                        const currentReadBytes = proc.io_counters[2] || 0;
+                        const currentWriteBytes = proc.io_counters[3] || 0;
+                        
+                        // Convert to GB for cumulative totals
+                        diskRead = Math.round((currentReadBytes / 1024 / 1024 / 1024) * 100) / 100; // Convert to GB with 2 decimal places
+                        diskWrite = Math.round((currentWriteBytes / 1024 / 1024 / 1024) * 100) / 100; // Convert to GB with 2 decimal places
+                    }
+
+                    // Determine status based on process state
+                    let processStatus: ProcessStatus = "running";
+                    if (proc.status === "stopped" || proc.status === "terminated") {
+                        processStatus = "stopped";
+                    } else if (cpuPercent > 80 || memoryPercent > 80) {
+                        processStatus = "warning";
+                    }
+
+                    return {
+                        id: `${deviceName}-${proc.pid || index}`,
+                        name: proc.name || "Unknown Process",
+                        host: deviceName,
+                        cpu: Math.round(cpuPercent),
+                        memory: Math.round(memoryPercent),
+                        diskRead: diskRead,
+                        diskWrite: diskWrite,
+                        status: processStatus
+                    };
+                });
+
+                // Filter out system processes
+                const filteredProcesses = mappedProcesses.filter(p => {
+                    const name = p.name.toLowerCase();
+                    return !name.includes('system idle process') && 
+                           !name.includes('system interrupts') &&
+                           !name.includes('dpc');
+                });
+                
+                // Update processes - accumulate from multiple machines or replace for single machine
+                setAllProcesses(prevProcesses => {
+                    if (machineFilter === "all") {
+                        // For "all machines", accumulate processes from different machines
+                        // Remove old processes from this machine and add new ones
+                        const otherMachineProcesses = prevProcesses.filter(p => p.host !== deviceName);
+                        return [...otherMachineProcesses, ...filteredProcesses];
+                    } else {
+                        // For single machine, replace all processes
+                        return filteredProcesses;
+                    }
+                });
+                
+                // Update data age tracking
+                const now = new Date();
+                
+                setLastUpdateTime(now);
+                setDataAge(0);
+            } catch (error) {
+                console.error('Error parsing WebSocket process data:', error);
+            }
+        },
+        onOpen: () => {
+            console.log('Processes WebSocket connected');
+            setConnectionError(null);
+        },
+        onClose: () => {
+            console.log('Processes WebSocket disconnected');
+            setConnectionError('Connection lost');
+        },
+        onError: (error) => {
+            console.error('Processes WebSocket error:', error);
+            setConnectionError('WebSocket connection failed');
+        }
+    });
+
+    // Update connection error state from WebSocket hook
+    useEffect(() => {
+        setConnectionError(wsConnectionError);
+    }, [wsConnectionError]);
 
     useEffect(() => {
         if (status === "loading") return;
@@ -69,164 +180,26 @@ export default function ProcessesPage() {
         fetchMachines();
     }, []);
 
-    // WebSocket connection for live process data
+    // Subscribe to machines when WebSocket is connected
     useEffect(() => {
-        if (machines.length === 0) return; // Wait for machines to be loaded
+        if (!isConnected || machines.length === 0) return;
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/api/ws/liveview`;
-        
-        let ws: WebSocket;
-        
-        try {
-            ws = new WebSocket(wsUrl);
-
-            ws.onopen = () => {
-                console.log('Processes WebSocket connected');
-                setIsConnected(true);
-                setConnectionError(null);
-                
-                if (machineFilter === "all") {
-                    // Subscribe to all available machines
-                    machines.forEach(machine => {
-                        ws.send(JSON.stringify({
-                            type: 'subscribe',
-                            deviceName: machine
-                        }));
-                    });
-                } else {
-                    // Subscribe to the selected machine
-                    ws.send(JSON.stringify({
-                        type: 'subscribe',
-                        deviceName: machineFilter
-                    }));
-                }
-            };
-
-            ws.onmessage = (event) => {
-                try {
-                    // Skip non-JSON messages (like "Connected", "Received JSON...", etc.)
-                    if (typeof event.data !== 'string' || !event.data.trim().startsWith('{')) {
-                        console.log('WebSocket non-JSON message:', event.data);
-                        return;
-                    }
-                    
-                    const data = JSON.parse(event.data);
-                    
-                    // Skip if this doesn't look like process data
-                    if (!data.processes || !Array.isArray(data.processes) || !data.device) {
-                        console.log('WebSocket message missing required fields:', Object.keys(data));
-                        return;
-                    }
-                    
-                    // Check if this is process data
-                    if (data && data.processes && Array.isArray(data.processes) && data.device) {
-                        
-                        // Map process data to our interface
-                        const mappedProcesses: ProcessItem[] = data.processes.map((proc: any, index: number) => {
-                            // Clean and validate CPU percentage
-                            let cpuPercent = proc.cpu_percent || 0;
-                            if (cpuPercent > 100) {
-                                cpuPercent = Math.min(cpuPercent, 100);
-                            }
-                            
-                            // Clean and validate memory percentage
-                            let memoryPercent = proc.memory_percent || 0;
-                            if (memoryPercent > 100) {
-                                memoryPercent = Math.min(memoryPercent, 100);
-                            }
-
-                            // Extract disk I/O data from io_counters
-                            let diskRead = 0;
-                            let diskWrite = 0;
-                            
-                            if (proc.io_counters && Array.isArray(proc.io_counters) && proc.io_counters.length >= 4) {
-                                // io_counters array: [read_count, write_count, read_bytes, write_bytes, read_chars, write_chars]
-                                const currentReadBytes = proc.io_counters[2] || 0;
-                                const currentWriteBytes = proc.io_counters[3] || 0;
-                                
-                                // Convert to GB for cumulative totals
-                                diskRead = Math.round((currentReadBytes / 1024 / 1024 / 1024) * 100) / 100; // Convert to GB with 2 decimal places
-                                diskWrite = Math.round((currentWriteBytes / 1024 / 1024 / 1024) * 100) / 100; // Convert to GB with 2 decimal places
-                                }
-
-                            // Determine status based on process state
-                            let processStatus: ProcessStatus = "running";
-                            if (proc.status === "stopped" || proc.status === "terminated") {
-                                processStatus = "stopped";
-                            } else if (cpuPercent > 80 || memoryPercent > 80) {
-                                processStatus = "warning";
-                            }
-
-                            return {
-                                id: `${data.device.deviceName}-${proc.pid || index}`,
-                                name: proc.name || "Unknown Process",
-                                host: data.device.deviceName,
-                                cpu: Math.round(cpuPercent),
-                                memory: Math.round(memoryPercent),
-                                diskRead: diskRead,
-                                diskWrite: diskWrite,
-                                status: processStatus
-                            };
-                        });
-
-                        // Filter out system processes
-                        const filteredProcesses = mappedProcesses.filter(p => {
-                            const name = p.name.toLowerCase();
-                            return !name.includes('system idle process') && 
-                                   !name.includes('system interrupts') &&
-                                   !name.includes('dpc');
-                        });
-
-                        // Process data is valid, update the state
-                        
-                        // Update processes - accumulate from multiple machines or replace for single machine
-                        setAllProcesses(prevProcesses => {
-                            if (machineFilter === "all") {
-                                // For "all machines", accumulate processes from different machines
-                                // Remove old processes from this machine and add new ones
-                                const otherMachineProcesses = prevProcesses.filter(p => p.host !== data.device.deviceName);
-                                return [...otherMachineProcesses, ...filteredProcesses];
-                            } else {
-                                // For single machine, replace all processes
-                                return filteredProcesses;
-                            }
-                        });
-                        
-                        // Update data age tracking
-                        const now = new Date();
-                        setLastUpdateTime(now);
-                        setDataAge(0);
-                    }
-                } catch (error) {
-                    console.error('Error parsing WebSocket process data:', error);
-                }
-            };
-
-            ws.onclose = () => {
-                console.log('Processes WebSocket disconnected');
-                setIsConnected(false);
-                setConnectionError('Connection lost');
-            };
-
-            ws.onerror = (error) => {
-                console.error('Processes WebSocket error:', error);
-                setConnectionError('WebSocket connection failed');
-                setIsConnected(false);
-            };
-
-        } catch (error) {
-            console.error('Failed to create processes WebSocket connection:', error);
-            setConnectionError('Failed to create WebSocket connection');
-            setIsConnected(false);
+        if (machineFilter === "all") {
+            // Subscribe to all available machines
+            machines.forEach(machine => {
+                wsSend({
+                    type: 'subscribe',
+                    deviceName: machine
+                });
+            });
+        } else {
+            // Subscribe to the selected machine
+            wsSend({
+                type: 'subscribe',
+                deviceName: machineFilter
+            });
         }
-
-        return () => {
-            if (ws) {
-                ws.close();
-            }
-        };
-    }, [machineFilter, machines]);
+    }, [isConnected, machines, machineFilter, wsSend]);
 
     // Clear process list when machine filter changes
     useEffect(() => {
