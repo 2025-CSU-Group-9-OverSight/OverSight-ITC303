@@ -144,17 +144,17 @@ export default function AlertsPage() {
 
     return (
         <DashboardLayout title="Alerts">
-            <div className="space-y-6">
+            <div className="w-full space-y-6">
                 {/* Filters */}
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg font-semibold">Alert Filters</CardTitle>
+                    <CardHeader className="pb-4">
+                        <CardTitle className="text-xl font-semibold">Alert Filters</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-6">
                         {/* Main Filter Controls */}
-                        <div className="flex flex-col sm:flex-row gap-4">
-                            <div className="flex-1 min-w-0">
-                                <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-muted-foreground">
                                     Status Filter
                                 </label>
                                 <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -169,8 +169,8 @@ export default function AlertsPage() {
                                 </Select>
                             </div>
                             
-                            <div className="flex-1 min-w-0">
-                                <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-muted-foreground">
                                     Time Period
                                 </label>
                                 <Select value={timeFilter} onValueChange={setTimeFilter}>
@@ -187,19 +187,20 @@ export default function AlertsPage() {
                             </div>
                             
                             <div className="flex items-end">
-                                <Button onClick={fetchAlerts} variant="outline" className="w-full sm:w-auto">
+                                <Button onClick={fetchAlerts} variant="outline" className="w-full">
+                                    <Clock className="h-4 w-4 mr-2" />
                                     Refresh
                                 </Button>
                             </div>
                         </div>
                         
                         {/* Quick Filter Buttons */}
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-3">
                             <Button 
                                 variant={filterStatus === "unacknowledged" ? "default" : "outline"}
                                 size="sm"
                                 onClick={() => setFilterStatus("unacknowledged")}
-                                className="text-xs sm:text-sm"
+                                className="text-sm"
                             >
                                 Unacknowledged Only
                             </Button>
@@ -207,7 +208,7 @@ export default function AlertsPage() {
                                 variant={timeFilter === "24hours" ? "default" : "outline"}
                                 size="sm"
                                 onClick={() => setTimeFilter("24hours")}
-                                className="text-xs sm:text-sm"
+                                className="text-sm"
                             >
                                 Last 24h
                             </Button>
@@ -215,7 +216,7 @@ export default function AlertsPage() {
                                 variant={timeFilter === "7days" ? "default" : "outline"}
                                 size="sm"
                                 onClick={() => setTimeFilter("7days")}
-                                className="text-xs sm:text-sm"
+                                className="text-sm"
                             >
                                 Last 7d
                             </Button>
@@ -226,7 +227,7 @@ export default function AlertsPage() {
                                     setFilterStatus("all");
                                     setTimeFilter("24hours");
                                 }}
-                                className="text-xs sm:text-sm"
+                                className="text-sm"
                             >
                                 Reset Filters
                             </Button>
@@ -236,8 +237,8 @@ export default function AlertsPage() {
 
                 {/* Alerts List */}
             <Card>
-                <CardHeader>
-                        <CardTitle className="text-lg font-semibold">
+                    <CardHeader className="pb-4">
+                        <CardTitle className="text-xl font-semibold">
                             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                                 <span>System Alerts ({totalCount} total)</span>
                                 {timeFilter !== 'all' && (
@@ -250,7 +251,7 @@ export default function AlertsPage() {
                             </div>
                         </CardTitle>
                 </CardHeader>
-                    <CardContent className="p-0 sm:p-6">
+                    <CardContent className="p-0">
                         {loading ? (
                             <div className="flex justify-center py-8">
                                 <div className="text-muted-foreground">Loading alerts...</div>
@@ -266,67 +267,90 @@ export default function AlertsPage() {
                                 </p>
                             </div>
                         ) : (
-                            <div className="space-y-3 p-4 sm:p-0">
+                            <div className="space-y-4 p-6">
                                 {alerts.map((alert) => (
-                                    <Alert key={alert._id} variant={getSeverityColor(alert.reading, alert.threshold)} className="p-4">
-                                        <div className="flex flex-col lg:flex-row lg:items-start gap-4">
-                                            {/* Main Alert Content */}
-                                            <div className="flex items-start space-x-3 flex-1 min-w-0">
-                                                {getSeverityIcon(alert.reading, alert.threshold)}
-                                                <div className="flex-1 min-w-0">
-                                                    {/* Alert Header */}
-                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                                                        <div className="flex items-center space-x-2">
-                                                            {getTypeIcon(alert.meta.type)}
-                                                            <AlertTitle className="text-base font-semibold">
-                                                                {alert.meta.type.toUpperCase()} Alert
-                                                            </AlertTitle>
-                                                        </div>
-                                                        <div className="flex-shrink-0">
-                                                            {getStatusBadge(alert.currentStatus)}
-                                                        </div>
+                                    <Alert key={alert._id} variant={getSeverityColor(alert.reading, alert.threshold)} className="p-6 !grid-cols-1 !gap-0">
+                                        <div className="w-full">
+                                            {/* Alert Header Row */}
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                                                <div className="flex items-center space-x-3">
+                                                    {getSeverityIcon(alert.reading, alert.threshold)}
+                                                    <div className="flex items-center space-x-2">
+                                                        {getTypeIcon(alert.meta.type)}
+                                                        <AlertTitle className="text-lg font-semibold">
+                                                            {alert.meta.type.toUpperCase()} Alert
+                                                        </AlertTitle>
                                                     </div>
-                                                    
-                                                    {/* Alert Message */}
-                                                    <AlertDescription className="text-sm mb-3 leading-relaxed">
-                                                        {alert.message}
-                                                    </AlertDescription>
-                                                    
-                                                    {/* Alert Details */}
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs text-muted-foreground">
-                                                        <div className="flex items-center space-x-2">
-                                                            <Monitor className="h-3 w-3 flex-shrink-0" />
-                                                            <span className="truncate" title={alert.meta.deviceName}>
-                                                                {alert.meta.deviceName}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-center space-x-2">
-                                                            <Clock className="h-3 w-3 flex-shrink-0" />
-                                                            <span className="truncate" title={new Date(alert.timestamp).toLocaleString()}>
-                                                                {new Date(alert.timestamp).toLocaleString()}
-                                                            </span>
-                                                        </div>
-                                                        <div className="sm:col-span-2 lg:col-span-1">
-                                                            <span className="font-medium">
-                                                                {alert.reading}% / {alert.threshold}%
-                                                            </span>
-                                                        </div>
-                                                    </div>
+                                                </div>
+                                                <div className="flex items-center space-x-3">
+                                                    {getStatusBadge(alert.currentStatus)}
+                                                    {alert.currentStatus === 'unacknowledged' && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => updateAlertStatus(alert._id, "acknowledged")}
+                                                            className="whitespace-nowrap"
+                                                        >
+                                                            Acknowledge
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </div>
                                             
-                                            {/* Action Button */}
-                                            <div className="flex justify-end lg:justify-start">
-                                                {alert.currentStatus === 'unacknowledged' && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => updateAlertStatus(alert._id, "acknowledged")}
-                                                        className="w-full sm:w-auto"
-                                                    >
-                                                        Acknowledge
-                                                    </Button>
-                                                )}
+                                            {/* Alert Message */}
+                                            <div className="mb-4">
+                                                <AlertDescription className="text-base leading-relaxed">
+                                                    {alert.message}
+                                                </AlertDescription>
+                                            </div>
+                                            
+                                            {/* Alert Details - Full Width Layout */}
+                                            <div className="pt-4 border-t border-border/50">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                                    <div className="flex items-start space-x-3">
+                                                        <Monitor className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">Device</div>
+                                                            <div className="text-sm font-semibold text-foreground" title={alert.meta.deviceName}>
+                                                                {alert.meta.deviceName}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-start space-x-3">
+                                                        <Clock className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">Time</div>
+                                                            <div className="text-sm font-semibold text-foreground" title={new Date(alert.timestamp).toLocaleString()}>
+                                                                {new Date(alert.timestamp).toLocaleString()}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-start space-x-3">
+                                                        <div className="h-5 w-5 flex items-center justify-center mt-0.5">
+                                                            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">Current Usage</div>
+                                                            <div className="text-lg font-bold text-blue-600">
+                                                                {alert.reading}%
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-start space-x-3">
+                                                        <div className="h-5 w-5 flex items-center justify-center mt-0.5">
+                                                            <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">Threshold</div>
+                                                            <div className="text-lg font-bold text-orange-600">
+                                                                {alert.threshold}%
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </Alert>
@@ -336,8 +360,8 @@ export default function AlertsPage() {
                         
                         {/* Bulk Actions */}
                         {alerts.length > 0 && (
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 pt-4 border-t px-4 sm:px-0">
-                                <div className="flex items-center space-x-2">
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-6 py-4 bg-muted/30 border-t">
+                                <div className="flex items-center space-x-4">
                                     <Button
                                         variant="outline"
                                         size="sm"
@@ -347,24 +371,32 @@ export default function AlertsPage() {
                                             unacknowledgedAlerts.forEach(alert => updateAlertStatus(alert._id, "acknowledged"));
                                         }}
                                         disabled={!alerts.some(alert => alert.currentStatus === 'unacknowledged')}
-                                        className="text-xs sm:text-sm"
+                                        className="text-sm"
                                     >
+                                        <CheckCircle className="h-4 w-4 mr-2" />
                                         Acknowledge All Unacknowledged
                                     </Button>
                                 </div>
-                                <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-right">
-                                    <div className="flex flex-wrap justify-center sm:justify-end gap-2">
-                                        <span className="font-medium text-red-600">
-                                            {alerts.filter(alert => alert.currentStatus === 'unacknowledged').length} unacknowledged
-                                        </span>
-                                        <span className="text-muted-foreground">•</span>
-                                        <span className="font-medium text-blue-600">
-                                            {alerts.filter(alert => alert.currentStatus === 'acknowledged').length} acknowledged
-                                        </span>
-                                        <span className="text-muted-foreground">•</span>
-                                        <span className="font-medium text-gray-600">
-                                            {alerts.filter(alert => alert.currentStatus === 'archived').length} archived
-                                        </span>
+                                <div className="text-sm text-muted-foreground">
+                                    <div className="flex flex-wrap justify-center lg:justify-end gap-4">
+                                        <div className="flex items-center space-x-1">
+                                            <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                                            <span className="font-medium text-red-600">
+                                                {alerts.filter(alert => alert.currentStatus === 'unacknowledged').length} unacknowledged
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center space-x-1">
+                                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                            <span className="font-medium text-blue-600">
+                                                {alerts.filter(alert => alert.currentStatus === 'acknowledged').length} acknowledged
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center space-x-1">
+                                            <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                                            <span className="font-medium text-gray-600">
+                                                {alerts.filter(alert => alert.currentStatus === 'archived').length} archived
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -372,16 +404,16 @@ export default function AlertsPage() {
                         
                         {/* Pagination Controls */}
                         {totalPages > 1 && (
-                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mt-6 pt-4 border-t px-4 sm:px-0">
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-6 py-4 bg-muted/30 border-t">
                                 {/* Page Size and Info */}
                                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                                    <div className="flex items-center space-x-2">
-                                        <span className="text-xs sm:text-sm text-muted-foreground">Per page:</span>
+                                    <div className="flex items-center space-x-3">
+                                        <span className="text-sm text-muted-foreground">Per page:</span>
                                         <Select value={alertsPerPage.toString()} onValueChange={(value) => {
                                             setAlertsPerPage(parseInt(value));
                                             setCurrentPage(1); // Reset to first page when changing page size
                                         }}>
-                                            <SelectTrigger className="w-16 h-8">
+                                            <SelectTrigger className="w-20 h-9">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -392,19 +424,19 @@ export default function AlertsPage() {
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <div className="text-xs sm:text-sm text-muted-foreground">
+                                    <div className="text-sm text-muted-foreground">
                                         Showing {((currentPage - 1) * alertsPerPage) + 1} to {Math.min(currentPage * alertsPerPage, totalCount)} of {totalCount} alerts
                                     </div>
                                 </div>
                                 
                                 {/* Navigation Buttons */}
-                                <div className="flex items-center justify-center space-x-1">
+                                <div className="flex items-center justify-center space-x-2">
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         onClick={() => setCurrentPage(1)}
                                         disabled={currentPage === 1}
-                                        className="h-8 px-2 text-xs"
+                                        className="h-9 px-3 text-sm"
                                     >
                                         First
                                     </Button>
@@ -413,19 +445,19 @@ export default function AlertsPage() {
                                         size="sm"
                                         onClick={() => setCurrentPage(currentPage - 1)}
                                         disabled={currentPage === 1}
-                                        className="h-8 px-2 text-xs"
+                                        className="h-9 px-3 text-sm"
                                     >
-                                        Prev
+                                        Previous
                                     </Button>
-                                    <span className="text-xs sm:text-sm text-muted-foreground px-2">
-                                        {currentPage} / {totalPages}
+                                    <span className="text-sm text-muted-foreground px-3">
+                                        Page {currentPage} of {totalPages}
                                     </span>
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         onClick={() => setCurrentPage(currentPage + 1)}
                                         disabled={currentPage === totalPages}
-                                        className="h-8 px-2 text-xs"
+                                        className="h-9 px-3 text-sm"
                                     >
                                         Next
                                     </Button>
@@ -434,7 +466,7 @@ export default function AlertsPage() {
                                         size="sm"
                                         onClick={() => setCurrentPage(totalPages)}
                                         disabled={currentPage === totalPages}
-                                        className="h-8 px-2 text-xs"
+                                        className="h-9 px-3 text-sm"
                                     >
                                         Last
                                     </Button>
