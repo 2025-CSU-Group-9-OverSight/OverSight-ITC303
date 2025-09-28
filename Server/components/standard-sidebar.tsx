@@ -113,7 +113,7 @@ export default function StandardSidebar() {
       <div className="p-4 border-t border-gray-200">
         <div className="flex items-center space-x-3">
           <Avatar className="w-10 h-10">
-            <AvatarImage src={profilePicture} alt="Profile" />
+            <AvatarImage src={profilePicture || undefined} alt="Profile" />
             <AvatarFallback>
               <User className="h-5 w-5 text-gray-600" />
             </AvatarFallback>
