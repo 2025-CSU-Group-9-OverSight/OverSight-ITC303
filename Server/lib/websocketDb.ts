@@ -33,10 +33,11 @@ const HYSTERESIS_PERCENTAGES = {
 };
 
 // Alert timeout protection - prevents spam by limiting alert frequency
+// These will be overridden by database settings in getAlertSettings()
 const ALERT_TIMEOUTS = {
-    cpu: 30000,    // 30 seconds between CPU alerts
-    ram: 30000,    // 30 seconds between RAM alerts
-    disk: 30000    // 30 seconds between Disk alerts
+    cpu: 30000,    // Default 30 seconds between CPU alerts
+    ram: 30000,    // Default 30 seconds between RAM alerts
+    disk: 30000    // Default 30 seconds between Disk alerts
 };
 
 /**
@@ -99,12 +100,12 @@ export async function inputData(data: PerformanceLog) {
             console.log(`   Disk partitions: ${Object.keys(data.disk.partitions).length}`);
             
             // Use hysteresis logic for smart alert creation
-            await checkAndCreateAlert(data.device.deviceName, 'cpu', cpuPercent, alertSettings.cpu, `${cpuPercent}% cpu utilisation on ${data.device.deviceName}`, date, alertSettings.timeout);
-            await checkAndCreateAlert(data.device.deviceName, 'ram', data.ram.percentUsed, alertSettings.ram, `${data.ram.percentUsed}% memory utilisation on ${data.device.deviceName}`, date, alertSettings.timeout);
+            await checkAndCreateAlert(data.device.deviceName, 'cpu', cpuPercent, alertSettings.cpu, `${cpuPercent}% cpu utilisation on ${data.device.deviceName}`, date, alertSettings.timeout, alertSettings);
+            await checkAndCreateAlert(data.device.deviceName, 'ram', data.ram.percentUsed, alertSettings.ram, `${data.ram.percentUsed}% memory utilisation on ${data.device.deviceName}`, date, alertSettings.timeout, alertSettings);
             
             for (const [partition,fields] of Object.entries(data.disk.partitions)) {
                 console.log(`   Disk ${partition}: ${fields.percent}% (threshold: ${alertSettings.disk}%)`);
-                await checkAndCreateAlert(data.device.deviceName, 'disk', fields.percent, alertSettings.disk, `Partition ${partition} ${fields.percent}% used on ${data.device.deviceName}`, date, alertSettings.timeout);
+                await checkAndCreateAlert(data.device.deviceName, 'disk', fields.percent, alertSettings.disk, `Partition ${partition} ${fields.percent}% used on ${data.device.deviceName}`, date, alertSettings.timeout, alertSettings);
             }
             
             console.log(`✅ Alert check completed for ${data.device.deviceName}`);
@@ -124,22 +125,24 @@ async function getAlertSettings() {
     if(!globalThis.alertSettings) {                             // Initialise alert settings from database
         let db = await getDb();
         let settings = db.collection('settings');
-        let alertSettings = await settings.findOne({ name: 'alerts' });
+        let alertSettings = await settings.findOne({ type: 'alertSettings' });
 
         if(alertSettings) {
             globalThis.alertSettings = {
                 cpu: alertSettings.cpu,
                 ram: alertSettings.ram,
                 disk: alertSettings.disk,
-                timeout: alertSettings.timeout
+                timeout: alertSettings.timeout * 1000  // Convert seconds to milliseconds
             }
         } else {
             await settings.insertOne({
-                name: 'alerts',
+                type: 'alertSettings',
                 cpu: 85,
                 ram: 80,
                 disk: 95,
-                timeout: 30000
+                timeout: 30,  // Store in seconds
+                createdAt: new Date(),
+                updatedAt: new Date()
             });
             globalThis.alertSettings = {
                 cpu: 85,
@@ -205,7 +208,7 @@ function getCpuPercent(data: Record<string, any>) {
  * @param date 
  * @param timeout 
  */
-async function checkAndCreateAlert(deviceName: string, type: string, reading: number, threshold: number, message: string, date: Date, timeout: number) {
+async function checkAndCreateAlert(deviceName: string, type: string, reading: number, threshold: number, message: string, date: Date, timeout: number, alertSettings: AlertSettings) {
     // Get hysteresis percentages for this alert type
     const hysteresis = HYSTERESIS_PERCENTAGES[type as keyof typeof HYSTERESIS_PERCENTAGES];
     if (!hysteresis) {
@@ -233,7 +236,7 @@ async function checkAndCreateAlert(deviceName: string, type: string, reading: nu
         const now = Date.now();
         const lastAlertTime = alertTimeout.get(deviceName)?.[type] || 0;
         const timeSinceLastAlert = now - lastAlertTime;
-        const alertTimeoutMs = ALERT_TIMEOUTS[type as keyof typeof ALERT_TIMEOUTS];
+        const alertTimeoutMs = alertSettings.timeout;
         
         if (timeSinceLastAlert >= alertTimeoutMs) {
             // Transitioning from normal to alerting - create alert

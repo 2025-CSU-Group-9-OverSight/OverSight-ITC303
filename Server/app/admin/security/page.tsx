@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Shield, Key, FileCheck, RefreshCw, AlertTriangle, CheckCircle, XCircle, Calendar, Server, Eye, EyeOff, Copy } from "lucide-react";
 import { useToast } from "@/components/providers/ToastProvider";
+import AlertThresholdManager from "@/components/admin/alert-threshold-manager";
 
 interface SecurityStatus {
   certificate: {
@@ -534,6 +535,9 @@ export default function AdminSecurityPage() {
         </Card>
 
 
+
+        {/* Alert Threshold Management */}
+        <AlertThresholdManager />
 
         {/* Manual Commands Reference */}
         <Card>
