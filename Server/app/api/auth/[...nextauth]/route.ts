@@ -45,18 +45,51 @@ const handler = NextAuth({
     })
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.role = user.role;
-        token.profilePicture = user.profilePicture; // This line is correct
+        token.profilePicture = user.profilePicture;
       }
+      
+      // If session is being updated, fetch fresh user data from database
+      if (trigger === "update" && token.sub) {
+        console.log("NextAuth JWT callback: Session update triggered, fetching fresh user data...");
+        try {
+          const db = await getDb();
+          const usersCollection = db.collection("users");
+          const user = await usersCollection.findOne(
+            { _id: new ObjectId(token.sub) },
+            { projection: { password: 0 } }
+          );
+          
+          if (user) {
+            console.log("NextAuth JWT callback: Fresh user data found:", {
+              name: user.name,
+              email: user.email,
+              role: user.role,
+              profilePicture: user.profilePicture
+            });
+            token.role = user.role;
+            token.profilePicture = user.profilePicture;
+            token.name = user.name;
+            token.email = user.email;
+          } else {
+            console.log("NextAuth JWT callback: No user found in database");
+          }
+        } catch (error) {
+          console.error("NextAuth JWT callback: Error fetching updated user data:", error);
+        }
+      }
+      
       return token;
     },
     async session({ session, token }) {
       if (token) {
         session.user.role = token.role;
         session.user.id = token.sub || '';
-        session.user.profilePicture = token.profilePicture; // This line is correct
+        session.user.profilePicture = token.profilePicture;
+        session.user.name = token.name;
+        session.user.email = token.email;
       }
       return session;
     }

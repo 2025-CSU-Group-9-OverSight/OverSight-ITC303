@@ -25,11 +25,18 @@ declare global {                                                // Global variab
 const alertTimeout = new Map<string, Record<string, number>>(); // Map for device specific alert timeouts
 const deviceAlertStates = new Map<string, Record<string, 'normal' | 'alerting'>>(); // Track alert states for hysteresis
 
-// Hysteresis thresholds - prevents minor fluctuations from creating new alerts
-const HYSTERESIS_THRESHOLDS = {
-    cpu: { alert: 80, clear: 75 },    // Alert when >80%, only allow new alerts if drops below 75%
-    ram: { alert: 80, clear: 75 },    // Alert when >80%, only allow new alerts if drops below 75%
-    disk: { alert: 85, clear: 80 }    // Alert when >85%, only allow new alerts if drops below 80%
+// Hysteresis percentages - prevents minor fluctuations from creating new alerts
+const HYSTERESIS_PERCENTAGES = {
+    cpu: { alert: 0, clear: -10 },    // Alert at threshold, clear 10% below threshold
+    ram: { alert: 0, clear: -10 },    // Alert at threshold, clear 10% below threshold
+    disk: { alert: 0, clear: -10 }    // Alert at threshold, clear 10% below threshold
+};
+
+// Alert timeout protection - prevents spam by limiting alert frequency
+const ALERT_TIMEOUTS = {
+    cpu: 30000,    // 30 seconds between CPU alerts
+    ram: 30000,    // 30 seconds between RAM alerts
+    disk: 30000    // 30 seconds between Disk alerts
 };
 
 /**
@@ -77,15 +84,32 @@ export async function inputData(data: PerformanceLog) {
 
         console.log(`Data inserted: ${date}`);
 
-        let alertSettings = await getAlertSettings();           // Check data against alert settings and create alerts as required
-        let cpuPercent = getCpuPercent(data.cpu);
-        
-        // Use hysteresis logic for smart alert creation
-        await checkAndCreateAlert(data.device.deviceName, 'cpu', cpuPercent, alertSettings.cpu, `${cpuPercent}% cpu utilisation on ${data.device.deviceName}`, date, alertSettings.timeout);
-        await checkAndCreateAlert(data.device.deviceName, 'ram', data.ram.percentUsed, alertSettings.ram, `${data.ram.percentUsed}% memory utilisation on ${data.device.deviceName}`, date, alertSettings.timeout);
-        
-        for (const [partition,fields] of Object.entries(data.disk.partitions)) {
-            await checkAndCreateAlert(data.device.deviceName, 'disk', fields.percent, alertSettings.disk, `Partition ${partition} ${fields.percent}% used on ${data.device.deviceName}`, date, alertSettings.timeout);
+        try {
+            console.log(`🔍 Starting alert check for device: ${data.device.deviceName}`);
+            
+            let alertSettings = await getAlertSettings();           // Check data against alert settings and create alerts as required
+            console.log(`📊 Alert settings loaded: CPU=${alertSettings.cpu}%, RAM=${alertSettings.ram}%, Disk=${alertSettings.disk}%`);
+            
+            let cpuPercent = getCpuPercent(data.cpu);
+            
+            // Debug logging
+            console.log(`🔍 Alert Check - Device: ${data.device.deviceName}`);
+            console.log(`   CPU: ${cpuPercent}% (threshold: ${alertSettings.cpu}%)`);
+            console.log(`   RAM: ${data.ram.percentUsed}% (threshold: ${alertSettings.ram}%)`);
+            console.log(`   Disk partitions: ${Object.keys(data.disk.partitions).length}`);
+            
+            // Use hysteresis logic for smart alert creation
+            await checkAndCreateAlert(data.device.deviceName, 'cpu', cpuPercent, alertSettings.cpu, `${cpuPercent}% cpu utilisation on ${data.device.deviceName}`, date, alertSettings.timeout);
+            await checkAndCreateAlert(data.device.deviceName, 'ram', data.ram.percentUsed, alertSettings.ram, `${data.ram.percentUsed}% memory utilisation on ${data.device.deviceName}`, date, alertSettings.timeout);
+            
+            for (const [partition,fields] of Object.entries(data.disk.partitions)) {
+                console.log(`   Disk ${partition}: ${fields.percent}% (threshold: ${alertSettings.disk}%)`);
+                await checkAndCreateAlert(data.device.deviceName, 'disk', fields.percent, alertSettings.disk, `Partition ${partition} ${fields.percent}% used on ${data.device.deviceName}`, date, alertSettings.timeout);
+            }
+            
+            console.log(`✅ Alert check completed for ${data.device.deviceName}`);
+        } catch (alertError) {
+            console.error('❌ Error in alert generation:', alertError);
         }
 
     } catch (error) {
@@ -94,6 +118,8 @@ export async function inputData(data: PerformanceLog) {
 }
 
 async function getAlertSettings() {
+    // Clear cache to force fresh read from database
+    globalThis.alertSettings = null;
 
     if(!globalThis.alertSettings) {                             // Initialise alert settings from database
         let db = await getDb();
@@ -180,9 +206,16 @@ function getCpuPercent(data: Record<string, any>) {
  * @param timeout 
  */
 async function checkAndCreateAlert(deviceName: string, type: string, reading: number, threshold: number, message: string, date: Date, timeout: number) {
-    // Get hysteresis thresholds for this alert type
-    const hysteresis = HYSTERESIS_THRESHOLDS[type as keyof typeof HYSTERESIS_THRESHOLDS];
-    if (!hysteresis) return; // Skip if no hysteresis defined for this type
+    // Get hysteresis percentages for this alert type
+    const hysteresis = HYSTERESIS_PERCENTAGES[type as keyof typeof HYSTERESIS_PERCENTAGES];
+    if (!hysteresis) {
+        console.log(`⚠️  No hysteresis defined for ${type}, skipping`);
+        return; // Skip if no hysteresis defined for this type
+    }
+    
+    // Calculate actual hysteresis thresholds based on database threshold
+    const alertThreshold = threshold + hysteresis.alert;  // threshold + 0 = threshold
+    const clearThreshold = threshold + hysteresis.clear;  // threshold - 5 = 5% below threshold
     
     // Initialize device state if not exists
     if (!deviceAlertStates.has(deviceName)) {
@@ -192,18 +225,40 @@ async function checkAndCreateAlert(deviceName: string, type: string, reading: nu
     const deviceState = deviceAlertStates.get(deviceName)!;
     const currentState = deviceState[type] || 'normal';
     
+    console.log(`   ${type.toUpperCase()}: ${reading}% > ${alertThreshold}%? ${reading > alertThreshold}, State: ${currentState}, Clear: ${clearThreshold}%`);
+    
     // Check if we should create an alert
-    if (reading > hysteresis.alert && currentState === 'normal') {
-        // Transitioning from normal to alerting - create alert
-        await createAlert(deviceName, type, threshold, reading, message, date, timeout);
-        deviceState[type] = 'alerting';
-        deviceAlertStates.set(deviceName, deviceState);
-        console.log(`Alert state changed to alerting for ${deviceName} ${type}: ${reading}%`);
-    } else if (reading < hysteresis.clear && currentState === 'alerting') {
+    if (reading > alertThreshold && currentState === 'normal') {
+        // Check if enough time has passed since last alert (timeout protection)
+        const now = Date.now();
+        const lastAlertTime = alertTimeout.get(deviceName)?.[type] || 0;
+        const timeSinceLastAlert = now - lastAlertTime;
+        const alertTimeoutMs = ALERT_TIMEOUTS[type as keyof typeof ALERT_TIMEOUTS];
+        
+        if (timeSinceLastAlert >= alertTimeoutMs) {
+            // Transitioning from normal to alerting - create alert
+            console.log(`🚨 CREATING ALERT for ${deviceName} ${type}: ${reading}% > ${alertThreshold}%`);
+            await createAlert(deviceName, type, threshold, reading, message, date, timeout);
+            deviceState[type] = 'alerting';
+            deviceAlertStates.set(deviceName, deviceState);
+            
+            // Update last alert time
+            if (!alertTimeout.has(deviceName)) {
+                alertTimeout.set(deviceName, {});
+            }
+            alertTimeout.get(deviceName)![type] = now;
+            
+            console.log(`Alert state changed to alerting for ${deviceName} ${type}: ${reading}%`);
+        } else {
+            console.log(`   Alert suppressed for ${type}: ${Math.round((alertTimeoutMs - timeSinceLastAlert) / 1000)}s remaining`);
+        }
+    } else if (reading < clearThreshold && currentState === 'alerting') {
         // Transitioning from alerting to normal - reset state
         deviceState[type] = 'normal';
         deviceAlertStates.set(deviceName, deviceState);
         console.log(`Alert state reset to normal for ${deviceName} ${type}: ${reading}%`);
+    } else {
+        console.log(`   No alert for ${type}: reading=${reading}%, alert=${alertThreshold}%, clear=${clearThreshold}%, state=${currentState}`);
     }
     // If reading is between clear and alert thresholds, maintain current state
 }

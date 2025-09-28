@@ -40,7 +40,7 @@ const TEST_THRESHOLDS: AlertSettings = {
     timeout: 5000 // 5 seconds for faster testing
 };
 
-const TEST_DEVICE_NAME = 'qa-test-device';
+// We'll get the actual device name from the system instead of using a test device
 
 async function generateTestAlerts() {
     console.log('🧪 OverSight Test Alert Generation');
@@ -50,8 +50,50 @@ async function generateTestAlerts() {
         const db = await getDb();
         const settingsCollection = db.collection('settings');
         const alertLogCollection = db.collection('alertLog');
+        const performanceLogCollection = db.collection('performanceLog');
 
-        // 1. Check if we're already in test mode
+        // 1. Get available machines from the system
+        console.log('🔍 Finding available machines...');
+        const machines = await performanceLogCollection.distinct('meta.deviceName');
+        
+        if (machines.length === 0) {
+            console.log('❌ No machines found in the system!');
+            console.log('   Please ensure the monitoring script is running and collecting data.');
+            return;
+        }
+
+        // Find the machine with the most recent data (most likely to be active)
+        console.log(`✅ Found ${machines.length} machine(s): ${machines.join(', ')}`);
+        console.log('🔍 Finding the most recently active machine...');
+        
+        let mostRecentMachine = machines[0];
+        let mostRecentTime = new Date(0);
+        
+        for (const machine of machines) {
+            const latestData = await performanceLogCollection
+                .findOne(
+                    { 'meta.deviceName': machine },
+                    { sort: { timestamp: -1 } }
+                );
+            
+            if (latestData && latestData.timestamp > mostRecentTime) {
+                mostRecentTime = latestData.timestamp;
+                mostRecentMachine = machine;
+            }
+        }
+        
+        const testDeviceName = mostRecentMachine;
+        const timeDiff = Math.round((Date.now() - mostRecentTime.getTime()) / 1000 / 60); // minutes ago
+        
+        console.log(`🎯 Using most recently active machine: ${testDeviceName}`);
+        console.log(`   Last data received: ${timeDiff} minutes ago\n`);
+        
+        if (timeDiff > 10) {
+            console.log('⚠️  Warning: Last data is more than 10 minutes old');
+            console.log('   This machine may not be actively monitored.\n');
+        }
+
+        // 2. Check if we're already in test mode
         const currentSettings = await settingsCollection.findOne({ name: 'alerts' });
         if (currentSettings?.isTestMode) {
             console.log('⚠️  System is already in test mode!');
@@ -61,7 +103,7 @@ async function generateTestAlerts() {
             return;
         }
 
-        // 2. Backup original thresholds
+        // 3. Backup original thresholds
         const originalThresholds = {
             cpu: currentSettings?.cpu || 85,
             ram: currentSettings?.ram || 80,
@@ -75,7 +117,7 @@ async function generateTestAlerts() {
         console.log(`   Disk: ${originalThresholds.disk}%`);
         console.log(`   Timeout: ${originalThresholds.timeout}ms\n`);
 
-        // 3. Set test thresholds
+        // 4. Set test thresholds
         console.log('🔧 Setting test thresholds...');
         await settingsCollection.updateOne(
             { name: 'alerts' },
@@ -85,7 +127,7 @@ async function generateTestAlerts() {
                     isTestMode: true,
                     originalThresholds: originalThresholds,
                     testStartTime: new Date(),
-                    testDeviceName: TEST_DEVICE_NAME
+                    testDeviceName: testDeviceName
                 }
             },
             { upsert: true }
@@ -97,8 +139,9 @@ async function generateTestAlerts() {
         console.log(`   Disk: ${TEST_THRESHOLDS.disk}%`);
         console.log(`   Timeout: ${TEST_THRESHOLDS.timeout}ms\n`);
 
-        // 4. Wait for alerts to be generated
+        // 5. Wait for alerts to be generated
         console.log('⏳ Waiting for test alerts to be generated...');
+        console.log(`   Monitoring device: ${testDeviceName}`);
         console.log('   (This may take 1-3 minutes depending on system load)\n');
 
         let alertCount = 0;
@@ -109,7 +152,7 @@ async function generateTestAlerts() {
             await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds
             
             const testAlerts = await alertLogCollection.find({
-                'meta.deviceName': TEST_DEVICE_NAME,
+                'meta.deviceName': testDeviceName,
                 timestamp: { $gte: new Date(Date.now() - 5 * 60 * 1000) } // Last 5 minutes
             }).toArray();
 
@@ -200,13 +243,17 @@ async function cleanupTestAlerts() {
 
         // 3. Clean up test alerts
         console.log('🗑️  Cleaning up test alerts...');
-        const testDeviceName = currentSettings.testDeviceName || TEST_DEVICE_NAME;
+        const testDeviceName = currentSettings.testDeviceName;
         
-        const deleteResult = await alertLogCollection.deleteMany({
-            'meta.deviceName': testDeviceName
-        });
-
-        console.log(`✅ Cleaned up ${deleteResult.deletedCount} test alerts\n`);
+        if (testDeviceName) {
+            const deleteResult = await alertLogCollection.deleteMany({
+                'meta.deviceName': testDeviceName,
+                timestamp: { $gte: currentSettings.testStartTime }
+            });
+            console.log(`✅ Cleaned up ${deleteResult.deletedCount} test alerts\n`);
+        } else {
+            console.log('⚠️  No test device name found, skipping alert cleanup\n');
+        }
 
         console.log('🎉 Cleanup completed successfully!');
         console.log('   System is now back to normal operation mode.');

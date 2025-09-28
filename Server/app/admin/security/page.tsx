@@ -179,9 +179,9 @@ export default function AdminSecurityPage() {
     configured: boolean; 
   }) => (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
         <Label className="text-sm font-medium">{label}:</Label>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 self-start sm:self-auto">
           {configured && token && (
             <>
               <Button
@@ -206,11 +206,11 @@ export default function AdminSecurityPage() {
       </div>
       <div className="bg-gray-50 p-3 rounded-md border">
         {configured && token ? (
-          <code className="text-sm font-mono break-all">
+          <code className="text-xs sm:text-sm font-mono break-all">
             {isVisible ? token : '•'.repeat(Math.min(token.length, 64))}
           </code>
         ) : (
-          <span className="text-sm text-gray-500 italic">Not configured</span>
+          <span className="text-xs sm:text-sm text-gray-500 italic">Not configured</span>
         )}
       </div>
     </div>
@@ -260,10 +260,10 @@ export default function AdminSecurityPage() {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center space-x-2">
-          <Shield className="h-8 w-8" />
-          <h1 className="text-3xl font-bold">Security Management</h1>
+      <div className="w-full max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+          <Shield className="h-8 w-8 flex-shrink-0" />
+          <h1 className="text-2xl sm:text-3xl font-bold">Security Management</h1>
         </div>
 
         {/* System Security Overview */}
@@ -275,28 +275,28 @@ export default function AdminSecurityPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-1">
                 <Label className="text-sm font-medium">Environment</Label>
-                <div className="text-lg">{securityStatus.system.nodeEnv}</div>
+                <div className="text-base sm:text-lg break-words">{securityStatus.system.nodeEnv}</div>
               </div>
-              <div>
+              <div className="space-y-1">
                 <Label className="text-sm font-medium">HTTPS</Label>
-                <div className="text-lg">
+                <div className="text-base sm:text-lg">
                   {securityStatus.system.httpsEnabled ? (
-                    <Badge variant="outline" className="text-green-600 border-green-600">✅ Enabled</Badge>
+                    <Badge variant="outline" className="text-green-600 border-green-600 text-xs sm:text-sm">✅ Enabled</Badge>
                   ) : (
-                    <Badge variant="destructive">❌ Disabled</Badge>
+                    <Badge variant="destructive" className="text-xs sm:text-sm">❌ Disabled</Badge>
                   )}
                 </div>
               </div>
-              <div>
+              <div className="space-y-1">
                 <Label className="text-sm font-medium">Hostname</Label>
-                <div className="text-lg">{securityStatus.system.hostname}</div>
+                <div className="text-base sm:text-lg break-words">{securityStatus.system.hostname}</div>
               </div>
-              <div>
+              <div className="space-y-1">
                 <Label className="text-sm font-medium">Port</Label>
-                <div className="text-lg">{securityStatus.system.port}</div>
+                <div className="text-base sm:text-lg break-words">{securityStatus.system.port}</div>
               </div>
             </div>
             
@@ -304,21 +304,21 @@ export default function AdminSecurityPage() {
               <>
                 <Separator />
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                     <Label className="text-sm font-medium">WebSocket URI for Monitoring Scripts:</Label>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => copyToClipboard(securityStatus.system.websocketUri!, 'WebSocket URI')}
-                      className="h-8 w-8 p-0"
+                      className="h-8 w-8 p-0 self-start sm:self-auto"
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-md border">
-                    <code className="text-sm font-mono break-all">{securityStatus.system.websocketUri}</code>
+                    <code className="text-xs sm:text-sm font-mono break-all">{securityStatus.system.websocketUri}</code>
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-xs sm:text-sm text-gray-600">
                     Use this URI in your MonitoringScript/config.json files
                   </div>
                 </div>
@@ -336,39 +336,39 @@ export default function AdminSecurityPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Label className="text-sm font-medium">Status:</Label>
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                <Label className="text-sm font-medium">Status:</Label>
+                <div className="flex-shrink-0">
                   {getCertificateStatusBadge(securityStatus.certificate.status, securityStatus.certificate.daysUntilExpiry)}
                 </div>
-                
-                {securityStatus.certificate.exists && (
-                  <>
-                    <div className="text-sm text-gray-600">
-                      <strong>Subject:</strong> {securityStatus.certificate.subject}
-                    </div>
-                    {securityStatus.certificate.expiryDate && (
-                      <div className="text-sm text-gray-600">
-                        <strong>Expires:</strong> {new Date(securityStatus.certificate.expiryDate).toLocaleDateString()}
-                      </div>
-                    )}
-                  </>
-                )}
-                
-                {securityStatus.certificate.error && (
-                  <div className="text-sm text-red-600">
-                    <strong>Error:</strong> {securityStatus.certificate.error}
-                  </div>
-                )}
               </div>
+              
+              {securityStatus.certificate.exists && (
+                <div className="space-y-2">
+                  <div className="text-xs sm:text-sm text-gray-600 break-words">
+                    <strong>Subject:</strong> {securityStatus.certificate.subject}
+                  </div>
+                  {securityStatus.certificate.expiryDate && (
+                    <div className="text-xs sm:text-sm text-gray-600">
+                      <strong>Expires:</strong> {new Date(securityStatus.certificate.expiryDate).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {securityStatus.certificate.error && (
+                <div className="text-xs sm:text-sm text-red-600 break-words">
+                  <strong>Error:</strong> {securityStatus.certificate.error}
+                </div>
+              )}
             </div>
 
             <Separator />
 
             <div className="space-y-4">
-              <Label htmlFor="hostname">Hostname for Certificate Renewal</Label>
-              <div className="flex space-x-2">
+              <Label htmlFor="hostname" className="text-sm font-medium">Hostname for Certificate Renewal</Label>
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 <Input
                   id="hostname"
                   value={renewalHostname}
@@ -379,13 +379,14 @@ export default function AdminSecurityPage() {
                 <Button 
                   onClick={renewCertificate}
                   disabled={operationInProgress || !renewalHostname.trim()}
-                  className="flex items-center space-x-2"
+                  className="flex items-center justify-center space-x-2 w-full sm:w-auto"
                 >
                   <FileCheck className="h-4 w-4" />
-                  <span>Renew Certificate</span>
+                  <span className="hidden sm:inline">Renew Certificate</span>
+                  <span className="sm:hidden">Renew</span>
                 </Button>
               </div>
-              <div className="text-sm text-gray-600">
+              <div className="text-xs sm:text-sm text-gray-600">
                 Enter the hostname or IP address that clients will use to connect to this server.
               </div>
             </div>
@@ -415,13 +416,15 @@ export default function AdminSecurityPage() {
           <CardContent className="space-y-6">
             {/* WebSocket Token Section */}
             <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <h3 className="text-lg font-semibold">WebSocket Authentication Token</h3>
-                {securityStatus.websocketToken.configured ? (
-                  <Badge variant="outline" className="text-green-600 border-green-600">✅ Configured</Badge>
-                ) : (
-                  <Badge variant="destructive">❌ Missing</Badge>
-                )}
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-4">
+                <h3 className="text-base sm:text-lg font-semibold">WebSocket Authentication Token</h3>
+                <div className="flex-shrink-0">
+                  {securityStatus.websocketToken.configured ? (
+                    <Badge variant="outline" className="text-green-600 border-green-600 text-xs sm:text-sm">✅ Configured</Badge>
+                  ) : (
+                    <Badge variant="destructive" className="text-xs sm:text-sm">❌ Missing</Badge>
+                  )}
+                </div>
               </div>
               
               <TokenDisplay
@@ -433,7 +436,7 @@ export default function AdminSecurityPage() {
               />
               
               {securityStatus.websocketToken.configured && (
-                <div className="text-sm text-gray-600 mt-2">
+                <div className="text-xs sm:text-sm text-gray-600 mt-2">
                   <strong>Token Length:</strong> {securityStatus.websocketToken.length} characters
                 </div>
               )}
@@ -443,13 +446,15 @@ export default function AdminSecurityPage() {
 
             {/* NextAuth Secret Section */}
             <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <h3 className="text-lg font-semibold">NextAuth Secret</h3>
-                {securityStatus.nextAuthSecret.configured ? (
-                  <Badge variant="outline" className="text-green-600 border-green-600">✅ Configured</Badge>
-                ) : (
-                  <Badge variant="destructive">❌ Missing</Badge>
-                )}
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-4">
+                <h3 className="text-base sm:text-lg font-semibold">NextAuth Secret</h3>
+                <div className="flex-shrink-0">
+                  {securityStatus.nextAuthSecret.configured ? (
+                    <Badge variant="outline" className="text-green-600 border-green-600 text-xs sm:text-sm">✅ Configured</Badge>
+                  ) : (
+                    <Badge variant="destructive" className="text-xs sm:text-sm">❌ Missing</Badge>
+                  )}
+                </div>
               </div>
               
               <TokenDisplay
@@ -461,7 +466,7 @@ export default function AdminSecurityPage() {
               />
               
               {securityStatus.nextAuthSecret.configured && (
-                <div className="text-sm text-gray-600 mt-2">
+                <div className="text-xs sm:text-sm text-gray-600 mt-2">
                   <strong>Secret Length:</strong> {securityStatus.nextAuthSecret.length} characters
                 </div>
               )}
@@ -471,45 +476,45 @@ export default function AdminSecurityPage() {
 
             {/* Token Rotation Section */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Token Rotation</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <h3 className="text-base sm:text-lg font-semibold">Token Rotation</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <Button 
                   onClick={() => rotateTokens('websocket')}
                   disabled={!!rotatingToken}
                   variant="outline"
-                  className="flex items-center space-x-2"
+                  className="flex items-center justify-center space-x-2 w-full"
                 >
                   {rotatingToken === 'websocket' ? (
                     <RefreshCw className="h-4 w-4 animate-spin" />
                   ) : (
                     <Key className="h-4 w-4" />
                   )}
-                  <span>Rotate WebSocket Token</span>
+                  <span className="text-xs sm:text-sm">Rotate WebSocket Token</span>
                 </Button>
                 <Button 
                   onClick={() => rotateTokens('nextauth')}
                   disabled={!!rotatingToken}
                   variant="outline"
-                  className="flex items-center space-x-2"
+                  className="flex items-center justify-center space-x-2 w-full"
                 >
                   {rotatingToken === 'nextauth' ? (
                     <RefreshCw className="h-4 w-4 animate-spin" />
                   ) : (
                     <RefreshCw className="h-4 w-4" />
                   )}
-                  <span>Rotate NextAuth Secret</span>
+                  <span className="text-xs sm:text-sm">Rotate NextAuth Secret</span>
                 </Button>
                 <Button 
                   onClick={() => rotateTokens('both')}
                   disabled={!!rotatingToken}
-                  className="flex items-center space-x-2"
+                  className="flex items-center justify-center space-x-2 w-full sm:col-span-2 lg:col-span-1"
                 >
                   {rotatingToken === 'both' ? (
                     <RefreshCw className="h-4 w-4 animate-spin" />
                   ) : (
                     <RefreshCw className="h-4 w-4" />
                   )}
-                  <span>Rotate Both Tokens</span>
+                  <span className="text-xs sm:text-sm">Rotate Both Tokens</span>
                 </Button>
               </div>
               
