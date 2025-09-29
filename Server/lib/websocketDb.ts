@@ -18,7 +18,7 @@ type AlertSettings = {
 };
 
 declare global {                                                // Global variables for hot module reload during development
-    var alertSettings: AlertSettings;
+    var alertSettings: AlertSettings | null;
     var alertSettingsMonitorInt: boolean;
 }
 
@@ -162,6 +162,8 @@ async function getAlertSettings() {
         changeStream.on('change', (next) =>{
             if (next.operationType != 'update') return;
             if (!next.updateDescription.updatedFields) return;
+            if (!globalThis.alertSettings) return;
+            
             if (next.updateDescription.updatedFields.cpu) globalThis.alertSettings.cpu = next.updateDescription.updatedFields.cpu;
             if (next.updateDescription.updatedFields.ram) globalThis.alertSettings.ram = next.updateDescription.updatedFields.ram;
             if (next.updateDescription.updatedFields.disk) globalThis.alertSettings.disk = next.updateDescription.updatedFields.disk;

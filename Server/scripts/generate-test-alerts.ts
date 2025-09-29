@@ -280,10 +280,9 @@ async function checkStatus() {
             console.log('🧪 System is in TEST MODE');
             console.log(`   Test thresholds: CPU ${currentSettings.cpu}%, RAM ${currentSettings.ram}%, Disk ${currentSettings.disk}%`);
             console.log(`   Test started: ${currentSettings.testStartTime}`);
-            console.log(`   Test device: ${currentSettings.testDeviceName || TEST_DEVICE_NAME}\n`);
-
             // Count test alerts
-            const testDeviceName = currentSettings.testDeviceName || TEST_DEVICE_NAME;
+            const testDeviceName = currentSettings.testDeviceName || 'qa-test-device';
+            console.log(`   Test device: ${testDeviceName}\n`);
             const testAlertCount = await alertLogCollection.countDocuments({
                 'meta.deviceName': testDeviceName
             });
