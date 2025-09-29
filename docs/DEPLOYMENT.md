@@ -64,65 +64,90 @@ make install && make build && make start
    sudo systemctl status mongod.service
    ```
 ##### Authentication Setup
-1. **Connect to MongoDB with mongosh**
+1. **Stop MongoDB**
    ```
-   mongosh --port 27017
+   sudo systemctl stop mongod.service
    ```
-2. **Switch to the admin database**
+2. **Edit the MongoDB config**
    ```
-   use admin
+   sudo nano /etc/mongod.conf
    ```
-3. **Create the admin and application users**
-   ```
-   db.createUser(
-		  {
-			user: "DBAdmin",
-			pwd: passwordPrompt(), // or cleartext password
-			roles: [
-			  { role: "userAdminAnyDatabase", db: "admin" },
-			  { role: "readWriteAnyDatabase", db: "admin" }
-			]
-		  }
-		)
-   ```
-   ```
-   db.createUser(
-		  {
-			user: "OverSight",
-			pwd: passwordPrompt(), // or cleartext password
-			roles: [
-			  { role: "dbAdmin", db: "oversight" },
-			  { role: "readWrite", db: "oversight" },
-			  { role: "dbAdmin", db: "test" },
-			  { role: "readWrite", db: "test" }
-			]
-		  }
-		)
-   ```
-6. **Exit mongosh and stop MongoDB**
-   ```
-   .exit
-   ```
-   ```
-   sudo systemctl stop mongod
-   ```
-7. **Edit the MongoDB config and enable authorization**
-   ```
-   sudo sudo nano /etc/mongod.conf
-   ```
-   Replace *#security* with
+   Replace *#security* and *#replication* with
    ```
    security:
      authorization: enabled
+     keyFile: /etc/mongodb/keyfile
+
+   replication:
+      replSetName: "rs0"
+   ```
+   Optional: Add a local ip to allow network access
+   ```
+   bindIp: 127.0.0.1, XX.XX.XX.XX
    ```
    Save and exit
-8. **Restart MongoDB and verify it is running** 
+3. **Generate the keyfile and set its permissions**
+   ```
+   sudo mkdir /etc/mongodb
+   sudo openssl rand -base64 756 | sudo tee /etc/mongodb/keyfile
+   sudo chown mongodb:mongodb /etc/mongodb/keyfile
+   sudo chmod 400 /etc/mongodb/keyfile
+   ```
+4. **Restart MongoDB and verify it is running** 
    ```
    sudo systemctl start mongod.service
    sudo systemctl status mongod.service
    ```
-
-9. **The connection strings will now be**  
+5. **Connect to MongoDB with mongosh**
+   ```
+   mongosh --port 27017
+   ```
+6. **Initiate the replica set**
+   ```
+   rs.initiate()
+   rs.status()
+   ```
+7. **Switch to the admin database**
+   ```
+   use admin
+   ```
+8. **Create the admin and application users**  
+   Create the admin user user
+   ```
+   db.createUser(
+      {
+      user: "DBAdmin",
+      pwd: passwordPrompt(), // or cleartext password
+      roles: [
+         { role: "root", db: "admin" }
+      ]
+      }
+   )
+   ```
+   Login as the admin user
+   ```
+   db.auth("DBAdmin", passwordPrompt())
+   ```
+   Create the application user
+   ```
+   db.createUser(
+      {
+      user: "OverSight",
+      pwd: passwordPrompt(), // or cleartext password
+      roles: [
+         { role: "dbAdmin", db: "oversight" },
+         { role: "readWrite", db: "oversight" },
+         { role: "dbAdmin", db: "test" },
+         { role: "readWrite", db: "test" }
+      ]
+      }
+   )
+   ```
+9. **Exit mongosh and stop MongoDB**
+   ```
+   .exit
+   ```
+10. **The connection strings will now be**  
    ```mongodb://DBAdmin:ADMIN_PASSOWRD@localhost:27017/```  
    ```mongodb://OverSight:APPLICATION_PASSOWRD@localhost:27017/```  
 
