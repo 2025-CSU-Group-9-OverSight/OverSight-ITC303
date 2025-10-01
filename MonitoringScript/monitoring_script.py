@@ -180,21 +180,23 @@ async def updateProcesses():
         data['processes'].append(proc.info)
 
 async def updateServices():
-    # Get global data variable
-    global data
-    # Get iterable of all Windows services
-    services = psutil.win_service_iter()
-    # Clear the services field of data
-    data['services'] = []
-    # Append all services and their info
-    for serv in services:
-        data['services'].append({
-            'pid': serv.pid(),
-            'name': serv.name(),
-            'display_name': serv.display_name(),
-            'start_type': serv.start_type(),
-            'status': serv.status()
-        })
+    if deviceDetails[0] == 'Windows':
+        print("Windows stuff")
+        # Get global data variable
+        global data
+        # Get iterable of all Windows services
+        services = psutil.win_service_iter()
+        # Clear the services field of data
+        data['services'] = []
+        # Append all services and their info
+        for serv in services:
+            data['services'].append({
+                'pid': serv.pid(),
+                'name': serv.name(),
+                'display_name': serv.display_name(),
+                'start_type': serv.start_type(),
+                'status': serv.status()
+            })
 
 async def updateDisk():
     # Get global data variable
