@@ -64,55 +64,16 @@ make install && make build && make start
    sudo systemctl status mongod.service
    ```
 ##### Authentication Setup
-1. **Stop MongoDB**
-   ```
-   sudo systemctl stop mongod.service
-   ```
-2. **Edit the MongoDB config**
-   ```
-   sudo nano /etc/mongod.conf
-   ```
-   Replace *#security* and *#replication* with
-   ```
-   security:
-     authorization: enabled
-     keyFile: /etc/mongodb/keyfile
-
-   replication:
-      replSetName: "rs0"
-   ```
-   Optional: Add a local ip to allow network access
-   ```
-   bindIp: 127.0.0.1, XX.XX.XX.XX
-   ```
-   Save and exit
-3. **Generate the keyfile and set its permissions**
-   ```
-   sudo mkdir /etc/mongodb
-   sudo openssl rand -base64 756 | sudo tee /etc/mongodb/keyfile
-   sudo chown mongodb:mongodb /etc/mongodb/keyfile
-   sudo chmod 400 /etc/mongodb/keyfile
-   ```
-4. **Restart MongoDB and verify it is running** 
-   ```
-   sudo systemctl start mongod.service
-   sudo systemctl status mongod.service
-   ```
-5. **Connect to MongoDB with mongosh**
+1. **Connect to MongoDB with mongosh**
    ```
    mongosh --port 27017
    ```
-6. **Initiate the replica set**
-   ```
-   rs.initiate()
-   rs.status()
-   ```
-7. **Switch to the admin database**
+2. **Switch to the admin database**
    ```
    use admin
    ```
-8. **Create the admin and application users**  
-   Create the admin user user
+3. **Create the admin and application users**  
+   Create the admin user
    ```
    db.createUser(
       {
@@ -123,10 +84,6 @@ make install && make build && make start
       ]
       }
    )
-   ```
-   Login as the admin user
-   ```
-   db.auth("DBAdmin", passwordPrompt())
    ```
    Create the application user
    ```
@@ -143,11 +100,34 @@ make install && make build && make start
       }
    )
    ```
-9. **Exit mongosh and stop MongoDB**
+4. **Exit mongosh**
    ```
    .exit
    ```
-10. **The connection strings will now be**  
+5. **Stop MongoDB**
+   ```
+   sudo systemctl stop mongod.service
+   ```
+6. **Edit the MongoDB config**
+   ```
+   sudo nano /etc/mongod.conf
+   ```
+   Replace *#security* with
+   ```
+   security:
+     authorization: enabled
+   ```
+   Optional: Add a local ip to allow network access
+   ```
+   bindIp: 127.0.0.1, XX.XX.XX.XX
+   ```
+   Save and exit
+7. **Restart MongoDB and verify it is running** 
+   ```
+   sudo systemctl start mongod.service
+   sudo systemctl status mongod.service
+   ```
+8. **The connection strings will now be**  
    ```mongodb://DBAdmin:ADMIN_PASSOWRD@localhost:27017/```  
    ```mongodb://OverSight:APPLICATION_PASSOWRD@localhost:27017/```  
 

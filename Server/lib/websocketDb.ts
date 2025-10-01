@@ -119,66 +119,34 @@ export async function inputData(data: PerformanceLog) {
 }
 
 async function getAlertSettings() {
-    // Clear cache to force fresh read from database
-    globalThis.alertSettings = null;
-
-    if(!globalThis.alertSettings) {                             // Initialise alert settings from database
-        let db = await getDb();
-        let settings = db.collection('settings');
-        let alertSettings = await settings.findOne({ type: 'alertSettings' });
-
-        if(alertSettings) {
-            globalThis.alertSettings = {
-                cpu: alertSettings.cpu,
-                ram: alertSettings.ram,
-                disk: alertSettings.disk,
-                timeout: alertSettings.timeout * 1000  // Convert seconds to milliseconds
-            }
-        } else {
-            await settings.insertOne({
-                type: 'alertSettings',
-                cpu: 85,
-                ram: 80,
-                disk: 95,
-                timeout: 30,  // Store in seconds
-                createdAt: new Date(),
-                updatedAt: new Date()
-            });
-            globalThis.alertSettings = {
-                cpu: 85,
-                ram: 80,
-                disk: 95,
-                timeout: 30000
-            }
-            console.log('Alert settings initialised with realistic thresholds')
+    let db = await getDb(); // Attempt to retrieve alert settings from the database
+    let settings = db.collection('settings');
+    let alertSettings = await settings.findOne({ type: 'alertSettings' });
+    if(alertSettings) {
+        return {
+            cpu: alertSettings.cpu,
+            ram: alertSettings.ram,
+            disk: alertSettings.disk,
+            timeout: alertSettings.timeout * 1000  // Convert seconds to milliseconds
+        }
+    } else {
+        await settings.insertOne({
+            type: 'alertSettings',
+            cpu: 85,
+            ram: 80,
+            disk: 95,
+            timeout: 30,  // Store in seconds
+            createdAt: new Date(),
+            updatedAt: new Date()
+        });
+        console.log('Alert settings initialised with realistic thresholds')
+        return {
+            cpu: 85,
+            ram: 80,
+            disk: 95,
+            timeout: 30000
         }
     }
-
-    if(!globalThis.alertSettingsMonitorInt) {                           // Initialise the alert settings monitor
-        let db = await getDb();
-        let settings = db.collection('settings');
-        let changeStream = settings.watch([{$match: {'fullDocument.name': 'alerts', operationType: 'update'}}], {fullDocument: 'updateLookup'});
-
-        changeStream.on('change', (next) =>{
-            if (next.operationType != 'update') return;
-            if (!next.updateDescription.updatedFields) return;
-            if (!globalThis.alertSettings) return;
-            
-            if (next.updateDescription.updatedFields.cpu) globalThis.alertSettings.cpu = next.updateDescription.updatedFields.cpu;
-            if (next.updateDescription.updatedFields.ram) globalThis.alertSettings.ram = next.updateDescription.updatedFields.ram;
-            if (next.updateDescription.updatedFields.disk) globalThis.alertSettings.disk = next.updateDescription.updatedFields.disk;
-            if (next.updateDescription.updatedFields.timeout) globalThis.alertSettings.timeout = next.updateDescription.updatedFields.timeout;
-        })
-
-        changeStream.on('error', (error) => {
-            console.error('Alert settings monitor error:', error);
-            globalThis.alertSettingsMonitorInt = false;                 // Allow reconnection after error
-        })
-
-        globalThis.alertSettingsMonitorInt = true;
-    }
-
-    return globalThis.alertSettings; 
 }
 
 /**
