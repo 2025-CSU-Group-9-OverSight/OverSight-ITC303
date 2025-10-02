@@ -181,7 +181,6 @@ async def updateProcesses():
 
 async def updateServices():
     if deviceDetails[0] == 'Windows':
-        print("Windows stuff")
         # Get global data variable
         global data
         # Get iterable of all Windows services
