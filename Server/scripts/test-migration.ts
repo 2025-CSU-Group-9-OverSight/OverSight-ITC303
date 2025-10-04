@@ -60,9 +60,9 @@ async function testMigration() {
                 { 'meta.type': 'cpu' },
                 { $set: { 'meta.acknowledged': true } }
             );
-            console.log('❌ Update succeeded (unexpected for time-series)');
+            console.log('Update succeeded (unexpected for time-series)');
         } catch (error) {
-            console.log('✅ Update failed as expected:', error instanceof Error ? error.message : String(error));
+            console.log('Update failed as expected:', error instanceof Error ? error.message : String(error));
         }
         
         // Now migrate to regular collection
@@ -103,9 +103,9 @@ async function testMigration() {
                 { 'meta.type': 'cpu' },
                 { $set: { 'meta.acknowledged': true, acknowledgedAt: new Date() } }
             );
-            console.log('✅ Update succeeded! Modified count:', result.modifiedCount);
+            console.log('Update succeeded! Modified count:', result.modifiedCount);
         } catch (error) {
-            console.log('❌ Update failed:', error instanceof Error ? error.message : String(error));
+            console.log('Update failed:', error instanceof Error ? error.message : String(error));
         }
         
         // Verify the update
@@ -120,10 +120,10 @@ async function testMigration() {
         await db.collection(testCollectionName).drop();
         console.log('Cleaned up test collection');
         
-        console.log('✅ Migration test completed successfully!');
+        console.log('Migration test completed successfully!');
         
     } catch (error) {
-        console.error('❌ Migration test failed:', error);
+        console.error('Migration test failed:', error);
     } finally {
         await client.close();
     }

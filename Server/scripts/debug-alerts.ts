@@ -17,7 +17,7 @@ async function debugAlerts() {
         const settingsCollection = db.collection('settings');
         const alertSettings = await settingsCollection.findOne({ name: 'alerts' });
 
-        console.log('\n📊 Current Alert Settings:');
+        console.log('\nCurrent Alert Settings:');
         if (alertSettings) {
             console.log(`   CPU Threshold: ${alertSettings.cpu}%`);
             console.log(`   RAM Threshold: ${alertSettings.ram}%`);
@@ -34,7 +34,7 @@ async function debugAlerts() {
             .limit(20)
             .toArray();
 
-        console.log('\n📈 Recent Alerts (Last 20):');
+        console.log('\nRecent Alerts (Last 20):');
         if (recentAlerts.length > 0) {
             const alertCounts = recentAlerts.reduce((acc, alert) => {
                 const type = alert.meta?.type || 'unknown';
@@ -60,14 +60,14 @@ async function debugAlerts() {
             timestamp: { $gte: oneHourAgo }
         });
         
-        console.log(`\n🚨 Alerts in last hour: ${recentAlertsCount}`);
+        console.log(`\nAlerts in last hour: ${recentAlertsCount}`);
         
         if (recentAlertsCount > 50) {
-            console.log('   ⚠️  HIGH ALERT COUNT - Possible flooding detected!');
+            console.log('   HIGH ALERT COUNT - Possible flooding detected!');
         } else if (recentAlertsCount > 20) {
-            console.log('   ⚠️  Moderate alert count - Monitor closely');
+            console.log('   Moderate alert count - Monitor closely');
         } else {
-            console.log('   ✅ Alert count looks normal');
+            console.log('   Alert count looks normal');
         }
 
     } catch (error) {

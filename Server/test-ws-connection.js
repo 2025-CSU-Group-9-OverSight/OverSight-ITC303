@@ -16,13 +16,13 @@ async function testConnection(token) {
         const ws = new WebSocket(`ws://localhost:3000/api/ws/monitoring?token=${token}`);
         
         ws.on('open', () => {
-            console.log(`✅ SUCCESS: Connected with token: ${token}`);
+            console.log(`SUCCESS: Connected with token: ${token}`);
             ws.close();
             resolve(token);
         });
         
         ws.on('error', (error) => {
-            console.log(`❌ FAILED: ${error.message}`);
+            console.log(`FAILED: ${error.message}`);
             resolve(null);
         });
         
@@ -43,11 +43,11 @@ async function findWorkingToken() {
     for (const token of tokens) {
         const result = await testConnection(token);
         if (result) {
-            console.log(`\n🎉 Found working token: ${result}`);
+            console.log(`\nFound working token: ${result}`);
             return result;
         }
     }
-    console.log('\n❌ No working token found. Check server logs for the actual token.');
+    console.log('\nNo working token found. Check server logs for the actual token.');
     return null;
 }
 

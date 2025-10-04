@@ -16,20 +16,20 @@ async function checkCurrentSettings() {
         const alertSettings = await settings.findOne({ name: 'alerts' });
         
         if (alertSettings) {
-            console.log('📊 Current Alert Settings:');
+            console.log('Current Alert Settings:');
             console.log(`   CPU Threshold: ${alertSettings.cpu}%`);
             console.log(`   RAM Threshold: ${alertSettings.ram}%`);
             console.log(`   Disk Threshold: ${alertSettings.disk}%`);
             console.log(`   Timeout: ${alertSettings.timeout}ms (${alertSettings.timeout / 1000 / 60} minutes)`);
         } else {
-            console.log('❌ No alert settings found in database');
+            console.log('No alert settings found in database');
         }
         
         // Also check recent alerts to see what thresholds are actually being used
         const alertLog = db.collection('alertLog');
         const recentAlerts = await alertLog.find({}).sort({ timestamp: -1 }).limit(10).toArray();
         
-        console.log('\n📈 Recent Alert Thresholds:');
+        console.log('\nRecent Alert Thresholds:');
         const thresholds = new Set();
         recentAlerts.forEach(alert => {
             thresholds.add(`${alert.meta?.type}: ${alert.threshold}%`);
@@ -40,7 +40,7 @@ async function checkCurrentSettings() {
         });
         
     } catch (error) {
-        console.error('❌ Error checking settings:', error);
+        console.error('Error checking settings:', error);
     } finally {
         await client.close();
     }

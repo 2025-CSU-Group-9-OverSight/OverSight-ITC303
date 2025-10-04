@@ -85,7 +85,7 @@ USE_HTTPS=true
       writeFileSync(envPath, envContent);
 
       // Log the token rotation
-      console.log(`🔄 Token rotation performed by ${session.user?.email}`);
+      console.log(`Token rotation performed by ${session.user?.email}`);
       console.log(`   Type: ${tokenType}`);
       console.log(`   Timestamp: ${new Date().toISOString()}`);
 

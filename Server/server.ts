@@ -25,14 +25,14 @@ const sslCertPath = process.env.SSL_CERT_PATH;
 // Bearer token configuration
 const WS_BEARER_TOKEN = process.env.WS_BEARER_TOKEN || crypto.randomBytes(32).toString('hex');
 if (!process.env.WS_BEARER_TOKEN) {
-    console.warn(`⚠️  No WS_BEARER_TOKEN environment variable set. Generated token: ${WS_BEARER_TOKEN}`);
-    console.warn(`⚠️  Please set WS_BEARER_TOKEN in your environment variables for production use.`);
+    console.warn(`No WS_BEARER_TOKEN environment variable set. Generated token: ${WS_BEARER_TOKEN}`);
+    console.warn(`Please set WS_BEARER_TOKEN in your environment variables for production use.`);
 }
 
 // Log MongoDB configuration at startup
 const mongoUri = process.env.MONGODB_URI || "mongodb://localhost:27017/";
 const database = process.env.NODE_ENV !== 'production' ? 'test' : 'oversight';
-console.log(`🔧 Server Configuration:`);
+console.log(`Server Configuration:`);
 console.log(`   Hostname: ${hostname}`);
 console.log(`   Port: ${port}`);
 console.log(`   HTTPS Enabled: ${useHttps}`);
@@ -59,10 +59,10 @@ app.prepare().then(()=>{                                                        
             server = createHttpsServer(serverOptions, (req: IncomingMessage, res: ServerResponse) => {
                 handle(req, res);
             });
-            console.log(`🔒 HTTPS server created with SSL certificates`);
+            console.log(`HTTPS server created with SSL certificates`);
         } catch (error) {
-            console.error(`❌ Failed to load SSL certificates:`, error);
-            console.log(`🔄 Falling back to HTTP server`);
+            console.error(`Failed to load SSL certificates:`, error);
+            console.log(`Falling back to HTTP server`);
             server = createServer((req: IncomingMessage, res: ServerResponse) => {
                 handle(req, res);
             });
@@ -73,7 +73,7 @@ app.prepare().then(()=>{                                                        
             handle(req, res);
         });
         if (process.env.NODE_ENV === 'production') {
-            console.warn(`⚠️  Running HTTP server in production. Consider enabling HTTPS with SSL certificates.`);
+            console.warn(`Running HTTP server in production. Consider enabling HTTPS with SSL certificates.`);
         }
     }
 
@@ -87,14 +87,14 @@ app.prepare().then(()=>{                                                        
         const isAuthenticated = validateBearerToken(req) || validateTokenFromQuery(req.url || '');
         
         if (!isAuthenticated) {
-            console.log(`❌ Unauthorized WebSocket connection attempt to ${pathname}`);
+            console.log(`Unauthorized WebSocket connection attempt to ${pathname}`);
             ws.close(1008, 'Unauthorized: Invalid or missing bearer token');
             return;
         }
 
         switch (pathname) {
-            case '/api/ws/monitoring':  console.log('✅ New authenticated monitoring client connected'); break;
-            case '/api/ws/liveview':    console.log('✅ New authenticated live view client connected');  break;
+            case '/api/ws/monitoring':  console.log('New authenticated monitoring client connected'); break;
+            case '/api/ws/liveview':    console.log('New authenticated live view client connected');  break;
             default: break;
         } 
 
@@ -184,7 +184,7 @@ app.prepare().then(()=>{                                                        
             const isAuthenticated = validateBearerToken(req) || validateTokenFromQuery(req.url || '');
             
             if (!isAuthenticated) {
-                console.log(`❌ Unauthorized WebSocket upgrade attempt to ${pathname}`);
+                console.log(`Unauthorized WebSocket upgrade attempt to ${pathname}`);
                 socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
                 socket.destroy();
                 return;
@@ -197,7 +197,7 @@ app.prepare().then(()=>{                                                        
     });
       
     server.listen(port, () => {                                                             // Start the web server  
-      console.log(` ▲ Ready on https://${hostname}:${port}`);
+      console.log(`Ready on https://${hostname}:${port}`);
     });
 })
 

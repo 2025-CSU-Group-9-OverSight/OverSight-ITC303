@@ -28,7 +28,7 @@ async function updateAlertSettings() {
         );
         
         if (result.matchedCount > 0) {
-            console.log('✅ Updated existing alert settings to realistic thresholds');
+            console.log('Updated existing alert settings to realistic thresholds');
         } else {
             // Create new settings if they don't exist
             await settings.insertOne({
@@ -38,17 +38,17 @@ async function updateAlertSettings() {
                 disk: 95,
                 timeout: 30000
             });
-            console.log('✅ Created new alert settings with realistic thresholds');
+            console.log('Created new alert settings with realistic thresholds');
         }
         
         // Verify the update
         const updatedSettings = await settings.findOne({ name: 'alerts' });
         console.log('Current alert settings:', updatedSettings);
         
-        console.log('🎯 Alert settings update completed successfully!');
+        console.log('Alert settings update completed successfully!');
         
     } catch (error) {
-        console.error('❌ Failed to update alert settings:', error);
+        console.error('Failed to update alert settings:', error);
     } finally {
         await client.close();
     }

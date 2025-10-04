@@ -155,11 +155,11 @@ async function testHysteresisLogic(testType: string = 'all') {
         // Get current alert settings
         const alertSettings = await settingsCollection.findOne({ name: 'alerts' });
         if (!alertSettings) {
-            console.log('❌ No alert settings found. Please run the system first.');
+            console.log('No alert settings found. Please run the system first.');
             return;
         }
 
-        console.log('📊 Current Alert Settings:');
+        console.log('Current Alert Settings:');
         console.log(`   CPU: ${alertSettings.cpu}% (alert) / ${alertSettings.cpu - 5}% (clear)`);
         console.log(`   RAM: ${alertSettings.ram}% (alert) / ${alertSettings.ram - 5}% (clear)`);
         console.log(`   Disk: ${alertSettings.disk}% (alert) / ${alertSettings.disk - 5}% (clear)\n`);
@@ -170,18 +170,18 @@ async function testHysteresisLogic(testType: string = 'all') {
             : HYSTERESIS_TESTS.filter(test => test.type === testType);
 
         if (testsToRun.length === 0) {
-            console.log(`❌ Unknown test type: ${testType}`);
+            console.log(`Unknown test type: ${testType}`);
             console.log('   Available types: cpu, ram, disk, all');
             return;
         }
 
         // Run tests
         for (const test of testsToRun) {
-            console.log(`🔍 Testing ${test.type.toUpperCase()} Hysteresis Logic`);
+            console.log(`Testing ${test.type.toUpperCase()} Hysteresis Logic`);
             console.log('=' .repeat(40));
 
             for (const scenario of test.testScenarios) {
-                console.log(`\n📋 Scenario: ${scenario.name}`);
+                console.log(`\nScenario: ${scenario.name}`);
                 console.log(`   Description: ${scenario.description}`);
                 console.log(`   Usage Pattern: ${scenario.usageValues.join('%, ')}%`);
 
@@ -205,9 +205,9 @@ async function testHysteresisLogic(testType: string = 'all') {
                 const clearsMatch = clearCount === scenario.expectedClears;
 
                 if (alertsMatch && clearsMatch) {
-                    console.log('   ✅ PASS - Hysteresis logic working correctly');
+                    console.log('   PASS - Hysteresis logic working correctly');
                 } else {
-                    console.log('   ❌ FAIL - Hysteresis logic not working as expected');
+                    console.log('   FAIL - Hysteresis logic not working as expected');
                     if (!alertsMatch) {
                         console.log(`      Expected ${scenario.expectedAlerts} alerts, got ${alertCount}`);
                     }
@@ -218,7 +218,7 @@ async function testHysteresisLogic(testType: string = 'all') {
 
                 // Show detailed results
                 if (results.alerts.length > 0) {
-                    console.log('   📈 Alerts generated:');
+                    console.log('   Alerts generated:');
                     results.alerts.forEach(alert => {
                         console.log(`      - ${alert.timestamp}: ${alert.reading}% (threshold: ${alert.threshold}%)`);
                     });
@@ -232,15 +232,15 @@ async function testHysteresisLogic(testType: string = 'all') {
                 }
             }
 
-            console.log(`\n✅ ${test.type.toUpperCase()} hysteresis test completed\n`);
+            console.log(`\n${test.type.toUpperCase()} hysteresis test completed\n`);
         }
 
-        console.log('🎉 All hysteresis tests completed!');
-        console.log('\n💡 Note: This test simulates the logic in websocketDb.ts');
+        console.log('All hysteresis tests completed!');
+        console.log('\nNote: This test simulates the logic in websocketDb.ts');
         console.log('   For real-world testing, use the generate-test-alerts.ts script');
 
     } catch (error) {
-        console.error('❌ Error testing hysteresis logic:', error);
+        console.error('Error testing hysteresis logic:', error);
         process.exit(1);
     }
 }
@@ -315,7 +315,7 @@ function showHelp() {
     console.log('  npx tsx scripts/test-hysteresis-logic.ts ram');
     console.log('  npx tsx scripts/test-hysteresis-logic.ts disk');
     console.log('  npx tsx scripts/test-hysteresis-logic.ts all\n');
-    console.log('💡 This test simulates the logic in websocketDb.ts');
+    console.log('This test simulates the logic in websocketDb.ts');
     console.log('   For real-world testing, use the generate-test-alerts.ts script');
 }
 

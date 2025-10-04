@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Log the certificate renewal
-      console.log(`🔄 SSL certificate renewed by ${session.user?.email}`);
+      console.log(`SSL certificate renewed by ${session.user?.email}`);
       console.log(`   Hostname: ${hostname}`);
       console.log(`   Expiry: ${expiryDate.toISOString()}`);
       console.log(`   Timestamp: ${new Date().toISOString()}`);

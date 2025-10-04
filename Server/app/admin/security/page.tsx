@@ -140,7 +140,7 @@ export default function AdminSecurityPage() {
                        `Subject: ${data.certificate.subject}\n` +
                        `Expires: ${new Date(data.certificate.expiryDate).toLocaleDateString()}\n` +
                        `Valid for: ${data.certificate.daysValid} days\n\n` +
-                       `⚠️ Server restart required for new certificate to take effect`;
+                       `Server restart required for new certificate to take effect`;
         
         alert(message);
         
@@ -220,17 +220,17 @@ export default function AdminSecurityPage() {
   const getCertificateStatusBadge = (status: string, daysUntilExpiry?: number) => {
     switch (status) {
       case 'healthy':
-        return <Badge variant="outline" className="text-green-600 border-green-600">✅ Valid ({daysUntilExpiry} days)</Badge>;
+        return <Badge variant="outline" className="text-green-600 border-green-600">Valid ({daysUntilExpiry} days)</Badge>;
       case 'warning':
-        return <Badge variant="destructive">⚠️ Expires Soon ({daysUntilExpiry} days)</Badge>;
+        return <Badge variant="destructive">Expires Soon ({daysUntilExpiry} days)</Badge>;
       case 'expired':
-        return <Badge variant="destructive">❌ Expired</Badge>;
+        return <Badge variant="destructive">Expired</Badge>;
       case 'disabled':
-        return <Badge variant="secondary">🔓 HTTPS Disabled</Badge>;
+        return <Badge variant="secondary">HTTPS Disabled</Badge>;
       case 'error':
-        return <Badge variant="destructive">❌ Error</Badge>;
+        return <Badge variant="destructive">Error</Badge>;
       default:
-        return <Badge variant="secondary">❓ Unknown</Badge>;
+        return <Badge variant="secondary">Unknown</Badge>;
     }
   };
 
@@ -285,9 +285,9 @@ export default function AdminSecurityPage() {
                 <Label className="text-sm font-medium">HTTPS</Label>
                 <div className="text-base sm:text-lg">
                   {securityStatus.system.httpsEnabled ? (
-                    <Badge variant="outline" className="text-green-600 border-green-600 text-xs sm:text-sm">✅ Enabled</Badge>
+                    <Badge variant="outline" className="text-green-600 border-green-600 text-xs sm:text-sm">Enabled</Badge>
                   ) : (
-                    <Badge variant="destructive" className="text-xs sm:text-sm">❌ Disabled</Badge>
+                    <Badge variant="destructive" className="text-xs sm:text-sm">Disabled</Badge>
                   )}
                 </div>
               </div>
@@ -421,9 +421,9 @@ export default function AdminSecurityPage() {
                 <h3 className="text-base sm:text-lg font-semibold">WebSocket Authentication Token</h3>
                 <div className="flex-shrink-0">
                   {securityStatus.websocketToken.configured ? (
-                    <Badge variant="outline" className="text-green-600 border-green-600 text-xs sm:text-sm">✅ Configured</Badge>
+                    <Badge variant="outline" className="text-green-600 border-green-600 text-xs sm:text-sm">Configured</Badge>
                   ) : (
-                    <Badge variant="destructive" className="text-xs sm:text-sm">❌ Missing</Badge>
+                    <Badge variant="destructive" className="text-xs sm:text-sm">Missing</Badge>
                   )}
                 </div>
               </div>
@@ -451,9 +451,9 @@ export default function AdminSecurityPage() {
                 <h3 className="text-base sm:text-lg font-semibold">NextAuth Secret</h3>
                 <div className="flex-shrink-0">
                   {securityStatus.nextAuthSecret.configured ? (
-                    <Badge variant="outline" className="text-green-600 border-green-600 text-xs sm:text-sm">✅ Configured</Badge>
+                    <Badge variant="outline" className="text-green-600 border-green-600 text-xs sm:text-sm">Configured</Badge>
                   ) : (
-                    <Badge variant="destructive" className="text-xs sm:text-sm">❌ Missing</Badge>
+                    <Badge variant="destructive" className="text-xs sm:text-sm">Missing</Badge>
                   )}
                 </div>
               </div>
