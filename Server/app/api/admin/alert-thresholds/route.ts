@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-config';
 import getDb from '@/lib/getDb';
+import { clearAlertSettingsCache } from '@/lib/websocketDb';
 
 // GET - Fetch current alert thresholds
 export async function GET() {
@@ -101,9 +102,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Clear cached alert settings to force refresh
-    if (typeof globalThis !== 'undefined') {
-      globalThis.alertSettings = null;
-    }
+    clearAlertSettingsCache();
 
     return NextResponse.json({
       success: true,

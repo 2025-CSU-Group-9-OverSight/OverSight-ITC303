@@ -105,17 +105,27 @@ export async function inputData(data: PerformanceLog) {
 }
 
 async function getAlertSettings() {
-    let db = await getDb(); // Attempt to retrieve alert settings from the database
+    // Check if we have cached settings first
+    if (globalThis.alertSettings) {
+        return globalThis.alertSettings;
+    }
+
+    // Cache is empty, query database
+    let db = await getDb();
     let settings = db.collection('settings');
     let alertSettings = await settings.findOne({ type: 'alertSettings' });
+    
     if(alertSettings) {
-        return {
+        // Store in global cache
+        globalThis.alertSettings = {
             cpu: alertSettings.cpu,
             ram: alertSettings.ram,
             disk: alertSettings.disk,
             timeout: alertSettings.timeout * 1000  // Convert seconds to milliseconds
-        }
+        };
+        return globalThis.alertSettings;
     } else {
+        // No settings found, create default and cache them
         await settings.insertOne({
             type: 'alertSettings',
             cpu: 85,
@@ -125,13 +135,25 @@ async function getAlertSettings() {
             createdAt: new Date(),
             updatedAt: new Date()
         });
-        // Alert settings initialised with realistic thresholds
-        return {
+        
+        // Store default settings in cache
+        globalThis.alertSettings = {
             cpu: 85,
             ram: 80,
             disk: 95,
             timeout: 30000
-        }
+        };
+        return globalThis.alertSettings;
+    }
+}
+
+/**
+ * Clear the alert settings cache to force fresh data on next request
+ * This should be called when alert settings are updated via admin interface
+ */
+export function clearAlertSettingsCache() {
+    if (typeof globalThis !== 'undefined') {
+        globalThis.alertSettings = null;
     }
 }
 
