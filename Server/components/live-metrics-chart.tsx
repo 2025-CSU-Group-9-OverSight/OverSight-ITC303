@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuthenticatedWebSocket } from '@/hooks/useAuthenticatedWebSocket';
 
 declare global {
   interface Window {
@@ -51,10 +52,80 @@ export default function LiveMetricsChart({ title = "Live System Metrics", select
   const [selectedMetric, setSelectedMetric] = useState<'cpu' | 'memory' | 'disk'>('cpu');
   const [metricsData, setMetricsData] = useState<MetricsData[]>([]);
   const [machines, setMachines] = useState<string[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
+
+  // Authenticated WebSocket connection
+  const { isConnected, send: wsSend, connectionError: wsConnectionError } = useAuthenticatedWebSocket({
+    path: '/api/ws/liveview',
+    onMessage: (data) => {
+      // Skip if this doesn't look like metrics data
+      if (!data.cpu || !data.ram || !data.device || !data.timestamp) {
+        console.log('WebSocket message missing required fields:', data);
+        return;
+      }
+
+      // Calculate average CPU from individual core percentages
+      const avgCpu = data.cpu.percentUsed.reduce((sum: number, core: number) => sum + core, 0) / data.cpu.percentUsed.length;
+      
+      // Calculate overall disk usage across all partitions 
+      let diskUsage = 0;
+      if (data.disk.partitions) {
+        const partitions = Object.values(data.disk.partitions);
+        if (partitions.length > 0) {
+          // Calculate usage based on total capacity
+          let totalCapacity = 0;
+          let totalUsed = 0;
+          
+          partitions.forEach((partition: any) => {
+            totalCapacity += partition.total;
+            totalUsed += partition.used;
+          });
+          
+          if (totalCapacity > 0) {
+            diskUsage = Math.round((totalUsed / totalCapacity) * 100);
+          }
+        }
+      }
+
+      const newMetricsData: MetricsData = {
+        timestamp: data.timestamp,
+        cpu: Math.round(avgCpu),
+        memory: Math.round(data.ram.percentUsed),
+        disk: diskUsage
+      };
+
+      setMetricsData(prev => {
+        if (selectedMachine === 'all') {
+          // For "all machines", accumulate data from different machines
+          // Remove old data from this machine and add new data
+          const otherMachineData = prev.filter(d => !d.timestamp.includes(data.device.deviceName));
+          return [...otherMachineData, newMetricsData].slice(-50);
+        } else {
+          // For single machine, replace all data
+          const newData = [...prev, newMetricsData];
+          // Keep only last 50 data points to prevent memory issues
+          return newData.slice(-50);
+        }
+      });
+    },
+    onOpen: () => {
+      console.log('Authenticated WebSocket connected');
+      setConnectionError(null);
+    },
+    onClose: () => {
+      console.log('WebSocket disconnected');
+    },
+    onError: (error) => {
+      console.error('WebSocket error:', error);
+      setConnectionError('WebSocket connection error');
+    }
+  });
+
+  // Update connection error state from WebSocket hook
+  useEffect(() => {
+    setConnectionError(wsConnectionError);
+  }, [wsConnectionError]);
 
   // Fetch available machines
   useEffect(() => {
@@ -71,142 +142,26 @@ export default function LiveMetricsChart({ title = "Live System Metrics", select
     fetchMachines();
   }, []);
 
-  // WebSocket connection management
+  // Subscribe to machines when WebSocket is connected
   useEffect(() => {
-    if (machines.length === 0) return; // Wait for machines to be loaded
+    if (!isConnected || machines.length === 0) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/ws/liveview`;
-    
-    try {
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log('WebSocket connected');
-        setIsConnected(true);
-        setConnectionError(null);
-        
-        if (selectedMachine === 'all') {
-          // Subscribe to all available machines
-          machines.forEach(machine => {
-            ws.send(JSON.stringify({
-              type: 'subscribe',
-              deviceName: machine
-            }));
-          });
-        } else {
-          // Subscribe to the selected machine
-          ws.send(JSON.stringify({
-            type: 'subscribe',
-            deviceName: selectedMachine
-          }));
-        }
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          // Skip non-JSON messages (like "Connected", "ping", etc.)
-          if (typeof event.data !== 'string' || !event.data.trim().startsWith('{')) {
-            console.log('WebSocket non-JSON message:', event.data);
-            return;
-          }
-          
-          const data: WebSocketData = JSON.parse(event.data);
-          
-          // Skip if this doesn't look like metrics data
-          if (!data.cpu || !data.ram || !data.device || !data.timestamp) {
-            console.log('WebSocket message missing required fields:', data);
-            return;
-          }
-          
-          // Calculate average CPU from individual core percentages
-          const avgCpu = data.cpu.percentUsed.reduce((sum: number, core: number) => sum + core, 0) / data.cpu.percentUsed.length;
-          
-          // Calculate overall disk usage across all partitions 
-          let diskUsage = 0;
-          if (data.disk.partitions) {
-            const partitions = Object.values(data.disk.partitions);
-            if (partitions.length > 0) {
-              // Calculate usage based on total capacity
-              let totalCapacity = 0;
-              let totalUsed = 0;
-              
-              partitions.forEach(partition => {
-                totalCapacity += partition.total;
-                totalUsed += partition.used;
-              });
-              
-              if (totalCapacity > 0) {
-                diskUsage = Math.round((totalUsed / totalCapacity) * 100);
-              }
-            }
-          }
-
-          const newMetricsData: MetricsData = {
-            timestamp: data.timestamp,
-            cpu: Math.round(avgCpu),
-            memory: Math.round(data.ram.percentUsed),
-            disk: diskUsage
-          };
-
-          setMetricsData(prev => {
-            if (selectedMachine === 'all') {
-              // For "all machines", accumulate data from different machines
-              // Remove old data from this machine and add new data
-              const otherMachineData = prev.filter(d => !d.timestamp.includes(data.device.deviceName));
-              return [...otherMachineData, newMetricsData].slice(-50);
-            } else {
-              // For single machine, replace all data
-              const newData = [...prev, newMetricsData];
-              // Keep only last 50 data points to prevent memory issues
-              return newData.slice(-50);
-            }
-          });
-        } catch (error) {
-          console.error('Error parsing WebSocket data:', error);
-        }
-      };
-
-      ws.onclose = () => {
-        console.log('WebSocket disconnected');
-        setIsConnected(false);
-        setConnectionError('Connection lost');
-      };
-
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setConnectionError('Connection error');
-        setIsConnected(false);
-      };
-
-    } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
-      setConnectionError('Failed to connect');
+    if (selectedMachine === 'all') {
+      // Subscribe to all available machines
+      machines.forEach(machine => {
+        wsSend({
+          type: 'subscribe',
+          deviceName: machine
+        });
+      });
+    } else {
+      // Subscribe to the selected machine
+      wsSend({
+        type: 'subscribe',
+        deviceName: selectedMachine
+      });
     }
-
-    return () => {
-      if (wsRef.current) {
-        // Unsubscribe before closing
-        if (selectedMachine === 'all') {
-          // Unsubscribe from all machines
-          machines.forEach(machine => {
-            wsRef.current?.send(JSON.stringify({
-              type: 'unsubscribe',
-              deviceName: machine
-            }));
-          });
-        } else {
-          wsRef.current.send(JSON.stringify({
-            type: 'unsubscribe',
-            deviceName: selectedMachine
-          }));
-        }
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-    };
-  }, [selectedMachine, machines]);
+  }, [isConnected, machines, selectedMachine, wsSend]);
 
   // Clear metrics data when machine filter changes
   useEffect(() => {

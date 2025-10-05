@@ -11,9 +11,9 @@ export async function POST() {
         const usersCollection = db.collection("users");
         
         // Debug: Log database and collection info
-        console.log(`🔍 POST API Debug - Database name: ${db.databaseName}`);
-        console.log(`🔍 POST API Debug - Collection name: ${usersCollection.collectionName}`);
-        console.log(`🔍 POST API Debug - NODE_ENV: ${process.env.NODE_ENV}`);
+        console.log(`POST API Debug - Database name: ${db.databaseName}`);
+        console.log(`POST API Debug - Collection name: ${usersCollection.collectionName}`);
+        console.log(`POST API Debug - NODE_ENV: ${process.env.NODE_ENV}`);
         
         // Clear existing users
         await usersCollection.deleteMany({});
@@ -62,9 +62,9 @@ export async function GET() {
         const usersCollection = db.collection("users");
         
         // Debug: Log database and collection info
-        console.log(`🔍 API Debug - Database name: ${db.databaseName}`);
-        console.log(`🔍 API Debug - Collection name: ${usersCollection.collectionName}`);
-        console.log(`🔍 API Debug - NODE_ENV: ${process.env.NODE_ENV}`);
+        console.log(`API Debug - Database name: ${db.databaseName}`);
+        console.log(`API Debug - Collection name: ${usersCollection.collectionName}`);
+        console.log(`API Debug - NODE_ENV: ${process.env.NODE_ENV}`);
         
         const users = await usersCollection.find({}, { projection: { password: 0 } }).toArray();
         

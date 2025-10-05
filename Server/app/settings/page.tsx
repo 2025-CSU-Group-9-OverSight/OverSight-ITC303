@@ -1,6 +1,7 @@
 "use client";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { useEffect, useState, useRef } from "react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Camera, X } from "lucide-react";
 
 export default function AccountPage() {
-    const { status, data: session } = useSession();
+    const { status, data: session, update } = useSession();
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [name, setName] = useState<string>("");
@@ -78,6 +79,9 @@ export default function AccountPage() {
             const data = await res.json();
             setProfilePicture(data.profilePictureUrl);
             showToast({ type: "success", message: "Profile picture uploaded successfully" });
+            
+            // Profile picture uploaded successfully - sidebar will refresh automatically
+            console.log("Profile picture uploaded successfully");
         } catch (e: any) {
             const msg = e?.message || "Failed to upload profile picture";
             showToast({ type: "error", message: msg });
@@ -100,6 +104,9 @@ export default function AccountPage() {
 
             setProfilePicture("");
             showToast({ type: "success", message: "Profile picture removed successfully" });
+            
+            // Profile picture removed successfully - sidebar will refresh automatically
+            console.log("Profile picture removed successfully");
         } catch (e: any) {
             const msg = e?.message || "Failed to remove profile picture";
             showToast({ type: "error", message: msg });
@@ -164,7 +171,7 @@ export default function AccountPage() {
 
     return (
         <DashboardLayout title="Account Management">
-            <div className="max-w-2xl mx-auto">
+            <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                 <Card>
                     <CardHeader>
                         <CardTitle>Account Information</CardTitle>
@@ -173,14 +180,14 @@ export default function AccountPage() {
                         {/* Profile Picture Section */}
                         <div className="space-y-4">
                             <Label>Profile Picture</Label>
-                            <div className="flex items-center space-x-4">
-                                <Avatar className="w-20 h-20">
+                            <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                                <Avatar className="w-20 h-20 flex-shrink-0 mx-auto sm:mx-0">
                                     <AvatarImage src={profilePicture} alt="Profile" />
                                     <AvatarFallback>
                                         <User className="w-8 h-8" />
                                     </AvatarFallback>
                                 </Avatar>
-                                <div className="space-y-2">
+                                <div className="space-y-2 flex-1 min-w-0">
                                     <input
                                         ref={fileInputRef}
                                         type="file"
@@ -188,13 +195,14 @@ export default function AccountPage() {
                                         onChange={handleFileUpload}
                                         className="hidden"
                                     />
-                                    <div className="flex space-x-2">
+                                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                                         <Button
                                             type="button"
                                             variant="outline"
                                             size="sm"
                                             onClick={() => fileInputRef.current?.click()}
                                             disabled={isUploading}
+                                            className="w-full sm:w-auto"
                                         >
                                             <Camera className="w-4 h-4 mr-2" />
                                             {isUploading ? "Uploading..." : "Upload"}
@@ -206,13 +214,14 @@ export default function AccountPage() {
                                                 size="sm"
                                                 onClick={handleRemoveProfilePicture}
                                                 disabled={isUploading}
+                                                className="w-full sm:w-auto"
                                             >
                                                 <X className="w-4 h-4 mr-2" />
                                                 Remove
                                             </Button>
                                         )}
                                     </div>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground text-center sm:text-left">
                                         JPG, PNG, GIF, or WebP. Max 5MB.
                                     </p>
                                 </div>
@@ -222,7 +231,7 @@ export default function AccountPage() {
                         <Separator />
 
                         <div className="space-y-2">
-                            <Label htmlFor="name">Full Name</Label>
+                            <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
                             <Input
                                 id="name"
                                 type="text"
@@ -234,7 +243,7 @@ export default function AccountPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email Address</Label>
+                            <Label htmlFor="email" className="text-sm font-medium">Email Address</Label>
                             <Input
                                 id="email"
                                 type="email"
@@ -254,7 +263,7 @@ export default function AccountPage() {
                             </p>
                             
                             <div className="space-y-2">
-                                <Label htmlFor="currentPassword">Current Password</Label>
+                                <Label htmlFor="currentPassword" className="text-sm font-medium">Current Password</Label>
                                 <Input
                                     id="currentPassword"
                                     type="password"
@@ -266,7 +275,7 @@ export default function AccountPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="newPassword">New Password</Label>
+                                <Label htmlFor="newPassword" className="text-sm font-medium">New Password</Label>
                                 <Input
                                     id="newPassword"
                                     type="password"
@@ -278,7 +287,7 @@ export default function AccountPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                                <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm New Password</Label>
                                 <Input
                                     id="confirmPassword"
                                     type="password"
@@ -292,12 +301,12 @@ export default function AccountPage() {
 
                         <Separator />
 
-                        <div className="flex items-center gap-3">
-                            <Button onClick={handleSave} disabled={isLoading}>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                            <Button onClick={handleSave} disabled={isLoading} className="w-full sm:w-auto">
                                 {isLoading ? "Saving..." : "Save Changes"}
                             </Button>
                             {message && (
-                                <span className={`text-sm ${message.includes("successfully") ? "text-green-600" : "text-red-600"}`}>
+                                <span className={`text-sm ${message.includes("successfully") ? "text-green-600" : "text-red-600"} text-center sm:text-left`}>
                                     {message}
                                 </span>
                             )}

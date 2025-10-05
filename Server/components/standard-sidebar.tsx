@@ -2,6 +2,7 @@
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { 
   Home, 
   Bell, 
@@ -16,6 +17,46 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export default function StandardSidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+
+  // Fetch fresh profile picture from database
+  useEffect(() => {
+    const fetchProfilePicture = async () => {
+      if (session?.user?.email) {
+        try {
+          const response = await fetch('/api/account/me');
+          if (response.ok) {
+            const userData = await response.json();
+            console.log('Sidebar: Fetched user data:', { profilePicture: userData.profilePicture });
+            
+            // Add cache-busting parameter to force refresh
+            const profilePic = userData.profilePicture;
+            if (profilePic && profilePic.trim() !== '') {
+              const separator = profilePic.includes('?') ? '&' : '?';
+              const urlWithCacheBust = `${profilePic}${separator}t=${Date.now()}`;
+              console.log('Sidebar: Setting profile picture URL:', urlWithCacheBust);
+              setProfilePicture(urlWithCacheBust);
+            } else {
+              console.log('Sidebar: No profile picture, setting to null');
+              setProfilePicture(null);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching profile picture:', error);
+        }
+      }
+    };
+
+    fetchProfilePicture();
+    
+    // Also refresh on page focus (when user comes back from settings)
+    const handleFocus = () => {
+      fetchProfilePicture();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [session?.user?.email]);
 
   const navigationLinks = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -72,7 +113,7 @@ export default function StandardSidebar() {
       <div className="p-4 border-t border-gray-200">
         <div className="flex items-center space-x-3">
           <Avatar className="w-10 h-10">
-            <AvatarImage src={session?.user?.profilePicture} alt="Profile" />
+            <AvatarImage src={profilePicture || undefined} alt="Profile" />
             <AvatarFallback>
               <User className="h-5 w-5 text-gray-600" />
             </AvatarFallback>

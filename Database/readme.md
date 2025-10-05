@@ -50,57 +50,62 @@
    ```
    use admin
    ```
-3. **Create the admin and application users**
+3. **Create the admin and application users**  
+   Create the admin user
    ```
    db.createUser(
-		  {
-			user: "DBAdmin",
-			pwd: passwordPrompt(), // or cleartext password
-			roles: [
-			  { role: "userAdminAnyDatabase", db: "admin" },
-			  { role: "readWriteAnyDatabase", db: "admin" }
-			]
-		  }
-		)
+      {
+      user: "DBAdmin",
+      pwd: passwordPrompt(), // or cleartext password
+      roles: [
+         { role: "root", db: "admin" }
+      ]
+      }
+   )
    ```
+   Create the application user
    ```
    db.createUser(
-		  {
-			user: "OverSight",
-			pwd: passwordPrompt(), // or cleartext password
-			roles: [
-			  { role: "dbAdmin", db: "oversight" },
-			  { role: "readWrite", db: "oversight" },
-			  { role: "dbAdmin", db: "test" },
-			  { role: "readWrite", db: "test" }
-			]
-		  }
-		)
+      {
+      user: "OverSight",
+      pwd: passwordPrompt(), // or cleartext password
+      roles: [
+         { role: "dbAdmin", db: "oversight" },
+         { role: "readWrite", db: "oversight" },
+         { role: "dbAdmin", db: "test" },
+         { role: "readWrite", db: "test" }
+      ]
+      }
+   )
    ```
-6. **Exit mongosh and stop MongoDB**
+4. **Exit mongosh**
    ```
    .exit
    ```
+5. **Stop MongoDB**
    ```
-   sudo systemctl stop mongod
+   sudo systemctl stop mongod.service
    ```
-7. **Edit the MongoDB config and enable authorization**
+6. **Edit the MongoDB config**
    ```
-   sudo sudo nano /etc/mongod.conf
+   sudo nano /etc/mongod.conf
    ```
    Replace *#security* with
    ```
    security:
      authorization: enabled
    ```
+   Optional: Add a local ip to allow network access
+   ```
+   bindIp: 127.0.0.1, XX.XX.XX.XX
+   ```
    Save and exit
-8. **Restart MongoDB and verify it is running** 
+7. **Restart MongoDB and verify it is running** 
    ```
    sudo systemctl start mongod.service
    sudo systemctl status mongod.service
    ```
-
-9. **The connection strings will now be**  
+8. **The connection strings will now be**  
    ```mongodb://DBAdmin:ADMIN_PASSOWRD@localhost:27017/```  
    ```mongodb://OverSight:APPLICATION_PASSOWRD@localhost:27017/```  
 

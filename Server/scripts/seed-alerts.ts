@@ -18,7 +18,7 @@ async function seedAlerts() {
             {
                 type: AlertType.CPU_HIGH,
                 severity: AlertSeverity.HIGH,
-                status: AlertStatus.ACTIVE,
+                status: AlertStatus.UNACKNOWLEDGED,
                 title: "High CPU Usage Detected",
                 description: "CPU usage has exceeded 85% for more than 5 minutes on device D_Stin",
                 deviceName: "D_Stin",
@@ -32,7 +32,7 @@ async function seedAlerts() {
             {
                 type: AlertType.MEMORY_HIGH,
                 severity: AlertSeverity.MEDIUM,
-                status: AlertStatus.ACTIVE,
+                status: AlertStatus.UNACKNOWLEDGED,
                 title: "Memory Usage Warning",
                 description: "Memory usage is at 78% on device Tim-PC",
                 deviceName: "Tim-PC",
@@ -46,7 +46,7 @@ async function seedAlerts() {
             {
                 type: AlertType.DISK_HIGH,
                 severity: AlertSeverity.CRITICAL,
-                status: AlertStatus.ACTIVE,
+                status: AlertStatus.UNACKNOWLEDGED,
                 title: "Critical Disk Space Alert",
                 description: "Disk C: is 91% full on device Tim-PC",
                 deviceName: "Tim-PC",
@@ -78,7 +78,7 @@ async function seedAlerts() {
             {
                 type: AlertType.SERVICE_DOWN,
                 severity: AlertSeverity.CRITICAL,
-                status: AlertStatus.ACTIVE,
+                status: AlertStatus.UNACKNOWLEDGED,
                 title: "Critical Service Down",
                 description: "Windows Update service has stopped on device Tim-PC",
                 deviceName: "Tim-PC",
@@ -93,7 +93,7 @@ async function seedAlerts() {
             {
                 type: AlertType.CONNECTION_LOST,
                 severity: AlertSeverity.MEDIUM,
-                status: AlertStatus.RESOLVED,
+                status: AlertStatus.ARCHIVED,
                 title: "Connection Lost",
                 description: "Lost connection to monitoring agent on device D_Stin",
                 deviceName: "D_Stin",
@@ -108,7 +108,7 @@ async function seedAlerts() {
             {
                 type: AlertType.CPU_HIGH,
                 severity: AlertSeverity.LOW,
-                status: AlertStatus.ACTIVE,
+                status: AlertStatus.UNACKNOWLEDGED,
                 title: "CPU Usage Elevated",
                 description: "CPU usage is moderately high at 72% on device D_Stin",
                 deviceName: "D_Stin",
@@ -122,7 +122,7 @@ async function seedAlerts() {
             {
                 type: AlertType.MEMORY_HIGH,
                 severity: AlertSeverity.HIGH,
-                status: AlertStatus.ACTIVE,
+                status: AlertStatus.UNACKNOWLEDGED,
                 title: "Memory Usage Critical",
                 description: "Memory usage has reached 89% on device Tim-PC",
                 deviceName: "Tim-PC",

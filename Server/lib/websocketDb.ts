@@ -1,64 +1,277 @@
 import getDb from '@/lib/getDb';
 
-interface PerformanceLog {                                  // Typescript interface
+interface PerformanceLog {                                      // Typescript interface
     timestamp: string;
     device: Record<string, any>;
     processes: Array<any>;
     services: Array<any>;
-    disk: Record<string, any>;
+    disk: { io: Record<string, any>, partitions: Record<string, any>};
     cpu: Record<string, any>;
     ram: Record<string, any>;
 }
+
+type AlertSettings = {
+    cpu: number;
+    ram: number;
+    disk: number;
+    timeout: number;
+};
+
+declare global {                                                // Global variables for hot module reload during development
+    var alertSettings: AlertSettings | null;
+    var alertSettingsMonitorInt: boolean;
+}
+
+const alertTimeout = new Map<string, Record<string, number>>(); // Map for device specific alert timeouts
+const deviceAlertStates = new Map<string, Record<string, 'normal' | 'alerting'>>(); // Track alert states for hysteresis
+
+// Hysteresis percentages - prevents minor fluctuations from creating new alerts
+const HYSTERESIS_PERCENTAGES = {
+    cpu: { alert: 0, clear: -10 },    // Alert at threshold, clear 10% below threshold
+    ram: { alert: 0, clear: -10 },    // Alert at threshold, clear 10% below threshold
+    disk: { alert: 0, clear: -10 }    // Alert at threshold, clear 10% below threshold
+};
+
+// Alert timeout protection - prevents spam by limiting alert frequency
+// These will be overridden by database settings in getAlertSettings()
+const ALERT_TIMEOUTS = {
+    cpu: 30000,    // Default 30 seconds between CPU alerts
+    ram: 30000,    // Default 30 seconds between RAM alerts
+    disk: 30000    // Default 30 seconds between Disk alerts
+};
 
 /**
  * Send monitoring data to the database
  * @param data 
  */
 export async function inputData(data: PerformanceLog) {
+    try {
+        let date = new Date(data.timestamp);                    // Convert the timestamp string to a date
+        let db = await getDb();                                 // Get the database connection
+        let performanceLog = db.collection('performanceLog');   // Get the performance log collection
+        let processLog = db.collection('processLog');           // Get the process log collection
+        let serviceLog = db.collection('serviceLog');           // Get the service log collection
 
-    let date = new Date(data.timestamp);                    // Convert the timestamp string to a date
-    let db = await getDb();                                 // Get the database connection
-    let performanceLog = db.collection('performanceLog');   // Get the performance log collection
-    let processLog = db.collection('processLog');           // Get the process log collection
-    let serviceLog = db.collection('serviceLog');           // Get the service log collection
+        await performanceLog.insertOne({                        // Insert into the performance log collection
+            timestamp: date,
+            meta: {
+                deviceName: data.device.deviceName
+            },
+            device: data.device,
+            disk: data.disk,
+            cpu: data.cpu,
+            ram: data.ram
+        });
 
-    /* TODO - Retrieve alert threshold settings */
+        if(data.processes.length > 0) {                         // Insert process array into the process log collection
+            await processLog.insertOne({
+                timestamp: date,
+                meta: {
+                    deviceName: data.device.deviceName
+                },
+                processes: data.processes
+            })
+        }
 
-    /* TODO - Compare counters against alert threshold */
-    await performanceLog.insertOne({                        // Insert into the performance log collection
-        timestamp: date,
-        meta: {
-            deviceName: data.device.deviceName
-        },
-        device: data.device,
-        disk: data.disk,
-        cpu: data.cpu,
-        ram: data.ram
+        if(data.services.length > 0) {
+            await serviceLog.insertOne({                        // Insert service array into the services log collection
+                timestamp: date,
+                meta: {
+                    deviceName: data.device.deviceName
+                },
+                services: data.services
+            })
+        }
+
+        try {
+            let alertSettings = await getAlertSettings();           // Check data against alert settings and create alerts as required
+            
+            let cpuPercent = getCpuPercent(data.cpu);
+            
+            // Use hysteresis logic for smart alert creation
+            await checkAndCreateAlert(data.device.deviceName, 'cpu', cpuPercent, alertSettings.cpu, `${cpuPercent}% cpu utilisation on ${data.device.deviceName}`, date, alertSettings.timeout, alertSettings);
+            await checkAndCreateAlert(data.device.deviceName, 'ram', data.ram.percentUsed, alertSettings.ram, `${data.ram.percentUsed}% memory utilisation on ${data.device.deviceName}`, date, alertSettings.timeout, alertSettings);
+            
+            for (const [partition,fields] of Object.entries(data.disk.partitions)) {
+                await checkAndCreateAlert(data.device.deviceName, 'disk', fields.percent, alertSettings.disk, `Partition ${partition} ${fields.percent}% used on ${data.device.deviceName}`, date, alertSettings.timeout, alertSettings);
+            }
+        } catch (alertError) {
+            console.error('Error in alert generation:', alertError);
+        }
+
+    } catch (error) {
+        console.error('Error inserting websocket data:', error);
+    }
+}
+
+async function getAlertSettings() {
+    // Check if we have cached settings first
+    if (globalThis.alertSettings) {
+        return globalThis.alertSettings;
+    }
+
+    // Cache is empty, query database
+    let db = await getDb();
+    let settings = db.collection('settings');
+    let alertSettings = await settings.findOne({ type: 'alertSettings' });
+    
+    if(alertSettings) {
+        // Store in global cache
+        globalThis.alertSettings = {
+            cpu: alertSettings.cpu,
+            ram: alertSettings.ram,
+            disk: alertSettings.disk,
+            timeout: alertSettings.timeout * 1000  // Convert seconds to milliseconds
+        };
+        return globalThis.alertSettings;
+    } else {
+        // No settings found, create default and cache them
+        await settings.insertOne({
+            type: 'alertSettings',
+            cpu: 85,
+            ram: 80,
+            disk: 95,
+            timeout: 30,  // Store in seconds
+            createdAt: new Date(),
+            updatedAt: new Date()
+        });
+        
+        // Store default settings in cache
+        globalThis.alertSettings = {
+            cpu: 85,
+            ram: 80,
+            disk: 95,
+            timeout: 30000
+        };
+        return globalThis.alertSettings;
+    }
+}
+
+/**
+ * Clear the alert settings cache to force fresh data on next request
+ * This should be called when alert settings are updated via admin interface
+ */
+export function clearAlertSettingsCache() {
+    if (typeof globalThis !== 'undefined') {
+        globalThis.alertSettings = null;
+    }
+}
+
+/**
+ * Calculate % of total cpu usage
+ * @param data
+ * @returns total cpu %
+ */
+function getCpuPercent(data: Record<string, any>) {
+    let cores = data.percentUsed;
+    if (!cores) return 0;
+    
+    let total = 0;
+
+    cores.forEach((core: number) => {
+        total += core;
     });
 
-    if(data.processes.length > 0) {                         // Insert process array into the process log collection
-        await processLog.insertOne({
-            timestamp: date,
-            meta: {
-                deviceName: data.device.deviceName
-            },
-            processes: data.processes
-        })
-        /* TODO - Compare counters against alert threshold */
+    let percentage = total/cores.length;
+    return Number(percentage.toFixed(1));
+}
+
+/**
+ * Smart alert creation with hysteresis logic to prevent minor fluctuation alerts
+ * @param deviceName 
+ * @param type 
+ * @param reading 
+ * @param threshold 
+ * @param message 
+ * @param date 
+ * @param timeout 
+ */
+async function checkAndCreateAlert(deviceName: string, type: string, reading: number, threshold: number, message: string, date: Date, timeout: number, alertSettings: AlertSettings) {
+    // Get hysteresis percentages for this alert type
+    const hysteresis = HYSTERESIS_PERCENTAGES[type as keyof typeof HYSTERESIS_PERCENTAGES];
+    if (!hysteresis) {
+        console.log(`No hysteresis defined for ${type}, skipping`);
+        return; // Skip if no hysteresis defined for this type
+    }
+    
+    // Calculate actual hysteresis thresholds based on database threshold
+    const alertThreshold = threshold + hysteresis.alert;  // threshold + 0 = threshold
+    const clearThreshold = threshold + hysteresis.clear;  // threshold - 5 = 5% below threshold
+    
+    // Initialize device state if not exists
+    if (!deviceAlertStates.has(deviceName)) {
+        deviceAlertStates.set(deviceName, {});
+    }
+    
+    const deviceState = deviceAlertStates.get(deviceName)!;
+    const currentState = deviceState[type] || 'normal';
+    
+    // Check if we should create an alert
+    if (reading > alertThreshold && currentState === 'normal') {
+        // Check if enough time has passed since last alert (timeout protection)
+        const now = Date.now();
+        const lastAlertTime = alertTimeout.get(deviceName)?.[type] || 0;
+        const timeSinceLastAlert = now - lastAlertTime;
+        const alertTimeoutMs = alertSettings.timeout;
+        
+        if (timeSinceLastAlert >= alertTimeoutMs) {
+            // Transitioning from normal to alerting - create alert
+            await createAlert(deviceName, type, threshold, reading, message, date, timeout);
+            deviceState[type] = 'alerting';
+            deviceAlertStates.set(deviceName, deviceState);
+            
+            // Update last alert time
+            if (!alertTimeout.has(deviceName)) {
+                alertTimeout.set(deviceName, {});
+            }
+            alertTimeout.get(deviceName)![type] = now;
+        }
+    } else if (reading < clearThreshold && currentState === 'alerting') {
+        // Transitioning from alerting to normal - reset state
+        deviceState[type] = 'normal';
+        deviceAlertStates.set(deviceName, deviceState);
+    }
+    // If reading is between clear and alert thresholds, maintain current state
+}
+
+/**
+ * Create an alert in the database
+ * @param deviceName 
+ * @param type cpu | ram | disk
+ * @param threshold 0-100%
+ * @param reading 0-100%
+ * @param date 
+ * @param timeout timeout between alerts of the same type (ms)
+ * @returns 
+ */
+async function createAlert(deviceName: string, type: string, threshold: number, reading: number, message: string, date: Date, timeout: number) {
+    
+    if(!alertTimeout.has(deviceName)) {
+        alertTimeout.set(deviceName, {});
     }
 
-    if(data.services.length > 0) {
-        await serviceLog.insertOne({                        // Insert service array into the services log collection
-            timestamp: date,
-            meta: {
-                deviceName: data.device.deviceName
-            },
-            services: data.services
-        })
-        /* TODO - Compare counters against alert threshold */
-    }
+    let currentTime = date.getTime();
+    let previousTime = alertTimeout.get(deviceName)![type];
+    
+    if (previousTime && (currentTime < previousTime)) return;                   // Skip, before timeout
 
-    /* TODO - Update alert log if necessary */
+    alertTimeout.get(deviceName)![type] = currentTime + timeout;                // Reset timeout
 
-    console.log(`Data inserted: ${date}`);
+    let db = await getDb();
+    let alertLog = db.collection('alertLog');
+    await alertLog.insertOne({                                                  // Insert into the alert log collection
+        timestamp: date,
+        meta: {
+            type: type,
+            deviceName: deviceName,
+            acknowledged: false,
+            timestamp: date
+        },
+        threshold: threshold,
+        reading: reading,
+        message: message,
+        acknowledgedAt: null
+    });
+
+    // Alert created successfully
 }

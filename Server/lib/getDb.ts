@@ -16,11 +16,17 @@ export default async function getDb(): Promise<Db> {
     if (globalThis.mongoDb) return globalThis.mongoDb;                          // Return the db instance if already exists
 
     if (!globalThis.mongoClient) {                                              // Create a client if it does not exist
-        console.log(`🔗 MongoDB URI: ${uri}`);
-        console.log(`📊 Database: ${database}`);
-        globalThis.mongoClient = new MongoClient(uri);
-        await globalThis.mongoClient.connect();                                 // Connect the client to the database
-        console.log(`✅ MongoDB connected successfully`);
+        console.log(`MongoDB URI: ${uri}`);
+        console.log(`Database: ${database}`);
+        let client = new MongoClient(uri);
+        try {
+            await client.connect();                                             // Connect the client to the database
+        } catch (error) {
+            console.log(`MongoDB failed to connect`);
+            throw(error)
+        }
+        globalThis.mongoClient = client;
+        console.log(`MongoDB connected successfully`);
     }
 
     globalThis.mongoDb = globalThis.mongoClient.db(database);                   // Create the db instance
@@ -68,6 +74,18 @@ export default async function getDb(): Promise<Db> {
         )
         console.log("MongoDB: Created serviceLog")
     }
+
+        if(!collections.find(collection=> collection.name === "alertLog")) {        // Create the alert log collection if it does not exist
+            await globalThis.mongoDb.createCollection("alertLog")
+            console.log("MongoDB: Created alertLog")
+            
+            // Add TTL index for data expiration (3 months)
+            await globalThis.mongoDb.collection("alertLog").createIndex(
+                { "timestamp": 1 }, 
+                { expireAfterSeconds: 7889400 }
+            )
+            console.log("MongoDB: Created TTL index for alertLog")
+        }
 
     // Note: Users are now seeded manually via /api/seed endpoint
 

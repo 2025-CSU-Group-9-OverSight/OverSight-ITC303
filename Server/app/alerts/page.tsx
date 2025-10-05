@@ -26,18 +26,17 @@ import {
 
 interface AlertData {
     _id: string;
-    id: string;
-    type: AlertType;
-    severity: AlertSeverity;
-    status: AlertStatus;
-    title: string;
-    description: string;
-    deviceName: string;
     timestamp: string;
-    acknowledgedBy?: string;
+    meta: {
+        type: string;
+        deviceName: string;
+        acknowledged: boolean;
+    };
+    threshold: number;
+    reading: number;
+    message: string;
     acknowledgedAt?: string;
-    resolvedAt?: string;
-    metadata?: Record<string, any>;
+    currentStatus: string;
 }
 
 export default function AlertsPage() {
@@ -46,7 +45,11 @@ export default function AlertsPage() {
     const [alerts, setAlerts] = useState<AlertData[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState<string>("all");
-    const [filterSeverity, setFilterSeverity] = useState<string>("all");
+    const [timeFilter, setTimeFilter] = useState<string>("24hours");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [alertsPerPage, setAlertsPerPage] = useState(10);
 
     useEffect(() => {
         if (status === "loading") return;
@@ -55,18 +58,22 @@ export default function AlertsPage() {
 
     useEffect(() => {
         fetchAlerts();
-    }, [filterStatus, filterSeverity]);
+    }, [filterStatus, timeFilter, currentPage, alertsPerPage]);
 
     const fetchAlerts = async () => {
         try {
             setLoading(true);
             const params = new URLSearchParams();
             if (filterStatus !== "all") params.append("status", filterStatus);
-            if (filterSeverity !== "all") params.append("severity", filterSeverity);
+            if (timeFilter !== "all") params.append("timeFilter", timeFilter);
+            params.append("page", currentPage.toString());
+            params.append("limit", alertsPerPage.toString());
             
             const response = await fetch(`/api/alertLog?${params.toString()}`);
             const data = await response.json();
             setAlerts(data.alerts || []);
+            setTotalPages(data.pagination?.totalPages || 1);
+            setTotalCount(data.pagination?.totalCount || 0);
         } catch (error) {
             console.error("Error fetching alerts:", error);
         } finally {
@@ -74,7 +81,7 @@ export default function AlertsPage() {
         }
     };
 
-    const updateAlertStatus = async (alertId: string, newStatus: AlertStatus) => {
+    const updateAlertStatus = async (alertId: string, newStatus: string) => {
         try {
             await fetch(`/api/alertLog?id=${alertId}`, {
                 method: "PUT",
@@ -87,65 +94,43 @@ export default function AlertsPage() {
         }
     };
 
-    const getSeverityIcon = (severity: AlertSeverity) => {
-        switch (severity) {
-            case AlertSeverity.CRITICAL:
-                return <XCircle className="h-4 w-4 text-red-500" />;
-            case AlertSeverity.HIGH:
-                return <AlertTriangle className="h-4 w-4 text-orange-500" />;
-            case AlertSeverity.MEDIUM:
-                return <AlertCircle className="h-4 w-4 text-yellow-500" />;
-            case AlertSeverity.LOW:
-                return <Info className="h-4 w-4 text-blue-500" />;
-            default:
-                return <Info className="h-4 w-4 text-gray-500" />;
-        }
-    };
-
-    const getSeverityColor = (severity: AlertSeverity) => {
-        switch (severity) {
-            case AlertSeverity.CRITICAL:
-                return "destructive";
-            case AlertSeverity.HIGH:
-                return "destructive";
-            case AlertSeverity.MEDIUM:
-                return "default";
-            case AlertSeverity.LOW:
-                return "default";
-            default:
-                return "default";
-        }
-    };
-
-    const getTypeIcon = (type: AlertType) => {
+    const getTypeIcon = (type: string) => {
         switch (type) {
-            case AlertType.CPU_HIGH:
+            case 'cpu':
                 return <Cpu className="h-4 w-4" />;
-            case AlertType.MEMORY_HIGH:
+            case 'ram':
                 return <MemoryStick className="h-4 w-4" />;
-            case AlertType.DISK_HIGH:
+            case 'disk':
                 return <HardDrive className="h-4 w-4" />;
-            case AlertType.PROCESS_CRASH:
-                return <Monitor className="h-4 w-4" />;
-            case AlertType.SERVICE_DOWN:
-                return <Monitor className="h-4 w-4" />;
-            case AlertType.CONNECTION_LOST:
-                return <WifiOff className="h-4 w-4" />;
             default:
                 return <AlertCircle className="h-4 w-4" />;
         }
     };
 
-    const getStatusBadge = (status: AlertStatus) => {
-        switch (status) {
-            case AlertStatus.ACTIVE:
-                return <Badge variant="destructive">Active</Badge>;
-            case AlertStatus.ACKNOWLEDGED:
+    const getSeverityIcon = (reading: number, threshold: number) => {
+        const percentage = (reading / threshold) * 100;
+        if (percentage >= 100) return <XCircle className="h-4 w-4 text-red-500" />;
+        if (percentage >= 90) return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+        if (percentage >= 80) return <AlertCircle className="h-4 w-4 text-yellow-500" />;
+        return <Info className="h-4 w-4 text-blue-500" />;
+    };
+
+    const getSeverityColor = (reading: number, threshold: number) => {
+        const percentage = (reading / threshold) * 100;
+        if (percentage >= 100) return "destructive";
+        if (percentage >= 90) return "destructive";
+        return "default";
+    };
+
+    const getStatusBadge = (currentStatus: string) => {
+        switch (currentStatus) {
+            case 'acknowledged':
                 return <Badge variant="secondary">Acknowledged</Badge>;
-            case AlertStatus.RESOLVED:
-                return <Badge variant="outline">Resolved</Badge>;
+            case 'archived':
+                return <Badge variant="outline">Archived</Badge>;
+            case 'unacknowledged':
             default:
-                return <Badge variant="outline">{status}</Badge>;
+                return <Badge variant="destructive">Unacknowledged</Badge>;
         }
     };
 
@@ -159,52 +144,114 @@ export default function AlertsPage() {
 
     return (
         <DashboardLayout title="Alerts">
-            <div className="space-y-6">
+            <div className="w-full space-y-6">
                 {/* Filters */}
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Alert Filters</CardTitle>
+                    <CardHeader className="pb-4">
+                        <CardTitle className="text-xl font-semibold">Alert Filters</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="flex gap-4">
-                            <Select value={filterStatus} onValueChange={setFilterStatus}>
-                                <SelectTrigger className="w-48">
-                                    <SelectValue placeholder="Filter by status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Statuses</SelectItem>
-                                    <SelectItem value="active">Active</SelectItem>
-                                    <SelectItem value="acknowledged">Acknowledged</SelectItem>
-                                    <SelectItem value="resolved">Resolved</SelectItem>
-                                </SelectContent>
-                            </Select>
+                    <CardContent className="space-y-6">
+                        {/* Main Filter Controls */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-muted-foreground">
+                                    Status Filter
+                                </label>
+                                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Filter by status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Statuses</SelectItem>
+                                        <SelectItem value="unacknowledged">Unacknowledged</SelectItem>
+                                        <SelectItem value="acknowledged">Acknowledged</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             
-                            <Select value={filterSeverity} onValueChange={setFilterSeverity}>
-                                <SelectTrigger className="w-48">
-                                    <SelectValue placeholder="Filter by severity" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Severities</SelectItem>
-                                    <SelectItem value="critical">Critical</SelectItem>
-                                    <SelectItem value="high">High</SelectItem>
-                                    <SelectItem value="medium">Medium</SelectItem>
-                                    <SelectItem value="low">Low</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-muted-foreground">
+                                    Time Period
+                                </label>
+                                <Select value={timeFilter} onValueChange={setTimeFilter}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Time period" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="24hours">Last 24 Hours</SelectItem>
+                                        <SelectItem value="7days">Last 7 Days</SelectItem>
+                                        <SelectItem value="30days">Last 30 Days</SelectItem>
+                                        <SelectItem value="all">All Time</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             
-                            <Button onClick={fetchAlerts} variant="outline">
-                                Refresh
+                            <div className="flex items-end">
+                                <Button onClick={fetchAlerts} variant="outline" className="w-full">
+                                    <Clock className="h-4 w-4 mr-2" />
+                                    Refresh
+                                </Button>
+                            </div>
+                        </div>
+                        
+                        {/* Quick Filter Buttons */}
+                        <div className="flex flex-wrap gap-3">
+                            <Button 
+                                variant={filterStatus === "unacknowledged" ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setFilterStatus("unacknowledged")}
+                                className="text-sm"
+                            >
+                                Unacknowledged Only
+                            </Button>
+                            <Button 
+                                variant={timeFilter === "24hours" ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setTimeFilter("24hours")}
+                                className="text-sm"
+                            >
+                                Last 24h
+                            </Button>
+                            <Button 
+                                variant={timeFilter === "7days" ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setTimeFilter("7days")}
+                                className="text-sm"
+                            >
+                                Last 7d
+                            </Button>
+                            <Button 
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setFilterStatus("all");
+                                    setTimeFilter("24hours");
+                                }}
+                                className="text-sm"
+                            >
+                                Reset Filters
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Alerts List */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>System Alerts ({alerts.length})</CardTitle>
-                    </CardHeader>
-                    <CardContent>
+            <Card>
+                    <CardHeader className="pb-4">
+                        <CardTitle className="text-xl font-semibold">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                <span>System Alerts ({totalCount} total)</span>
+                                {timeFilter !== 'all' && (
+                                    <span className="text-sm font-normal text-muted-foreground">
+                                        - {timeFilter === '24hours' ? 'Last 24 Hours' : 
+                                            timeFilter === '7days' ? 'Last 7 Days' : 
+                                            timeFilter === '30days' ? 'Last 30 Days' : timeFilter}
+                                    </span>
+                                )}
+                            </div>
+                        </CardTitle>
+                </CardHeader>
+                    <CardContent className="p-0">
                         {loading ? (
                             <div className="flex justify-center py-8">
                                 <div className="text-muted-foreground">Loading alerts...</div>
@@ -214,71 +261,220 @@ export default function AlertsPage() {
                                 <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
                                 <h3 className="text-lg font-semibold mb-2">No Alerts Found</h3>
                                 <p className="text-muted-foreground">
-                                    {filterStatus !== "all" || filterSeverity !== "all" 
+                                    {filterStatus !== "all" 
                                         ? "No alerts match your current filters." 
                                         : "All systems are running normally."}
                                 </p>
                             </div>
                         ) : (
-                            <div className="space-y-4">
+                            <div className="space-y-4 p-6">
                                 {alerts.map((alert) => (
-                                    <Alert key={alert._id} variant={getSeverityColor(alert.severity)}>
-                                        <div className="flex items-start justify-between w-full">
-                                            <div className="flex items-start space-x-3 flex-1">
-                                                {getSeverityIcon(alert.severity)}
-                                                <div className="flex-1">
-                                                    <div className="flex items-center space-x-2 mb-1">
-                                                        {getTypeIcon(alert.type)}
-                                                        <AlertTitle className="text-base">
-                                                            {alert.title}
+                                    <Alert key={alert._id} variant={getSeverityColor(alert.reading, alert.threshold)} className="p-6 !grid-cols-1 !gap-0">
+                                        <div className="w-full">
+                                            {/* Alert Header Row */}
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                                                <div className="flex items-center space-x-3">
+                                                    {getSeverityIcon(alert.reading, alert.threshold)}
+                                                    <div className="flex items-center space-x-2">
+                                                        {getTypeIcon(alert.meta.type)}
+                                                        <AlertTitle className="text-lg font-semibold">
+                                                            {alert.meta.type.toUpperCase()} Alert
                                                         </AlertTitle>
-                                                        {getStatusBadge(alert.status)}
-                                                    </div>
-                                                    <AlertDescription className="text-sm">
-                                                        {alert.description}
-                                                    </AlertDescription>
-                                                    <div className="flex items-center space-x-4 mt-2 text-xs text-muted-foreground">
-                                                        <span className="flex items-center space-x-1">
-                                                            <Monitor className="h-3 w-3" />
-                                                            <span>{alert.deviceName}</span>
-                                                        </span>
-                                                        <span className="flex items-center space-x-1">
-                                                            <Clock className="h-3 w-3" />
-                                                            <span>{new Date(alert.timestamp).toLocaleString()}</span>
-                                                        </span>
-                                                        {alert.acknowledgedBy && (
-                                                            <span>Acknowledged by {alert.acknowledgedBy}</span>
-                                                        )}
                                                     </div>
                                                 </div>
+                                                <div className="flex items-center space-x-3">
+                                                    {getStatusBadge(alert.currentStatus)}
+                                                    {alert.currentStatus === 'unacknowledged' && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => updateAlertStatus(alert._id, "acknowledged")}
+                                                            className="whitespace-nowrap"
+                                                        >
+                                                            Acknowledge
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="flex space-x-2 ml-4">
-                                                {alert.status === AlertStatus.ACTIVE && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => updateAlertStatus(alert._id, AlertStatus.ACKNOWLEDGED)}
-                                                    >
-                                                        Acknowledge
-                                                    </Button>
-                                                )}
-                                                {alert.status === AlertStatus.ACKNOWLEDGED && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => updateAlertStatus(alert._id, AlertStatus.RESOLVED)}
-                                                    >
-                                                        Resolve
-                                                    </Button>
-                                                )}
+                                            
+                                            {/* Alert Message */}
+                                            <div className="mb-4">
+                                                <AlertDescription className="text-base leading-relaxed">
+                                                    {alert.message}
+                                                </AlertDescription>
+                                            </div>
+                                            
+                                            {/* Alert Details - Full Width Layout */}
+                                            <div className="pt-4 border-t border-border/50">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                                    <div className="flex items-start space-x-3">
+                                                        <Monitor className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">Device</div>
+                                                            <div className="text-sm font-semibold text-foreground" title={alert.meta.deviceName}>
+                                                                {alert.meta.deviceName}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-start space-x-3">
+                                                        <Clock className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">Time</div>
+                                                            <div className="text-sm font-semibold text-foreground" title={new Date(alert.timestamp).toLocaleString()}>
+                                                                {new Date(alert.timestamp).toLocaleString()}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-start space-x-3">
+                                                        <div className="h-5 w-5 flex items-center justify-center mt-0.5">
+                                                            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">Current Usage</div>
+                                                            <div className="text-lg font-bold text-blue-600">
+                                                                {alert.reading}%
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-start space-x-3">
+                                                        <div className="h-5 w-5 flex items-center justify-center mt-0.5">
+                                                            <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">Threshold</div>
+                                                            <div className="text-lg font-bold text-orange-600">
+                                                                {alert.threshold}%
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </Alert>
                                 ))}
                             </div>
                         )}
-                    </CardContent>
-                </Card>
+                        
+                        {/* Bulk Actions */}
+                        {alerts.length > 0 && (
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-6 py-4 bg-muted/30 border-t">
+                                <div className="flex items-center space-x-4">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            // Acknowledge all unacknowledged alerts on current page
+                                            const unacknowledgedAlerts = alerts.filter(alert => alert.currentStatus === 'unacknowledged');
+                                            unacknowledgedAlerts.forEach(alert => updateAlertStatus(alert._id, "acknowledged"));
+                                        }}
+                                        disabled={!alerts.some(alert => alert.currentStatus === 'unacknowledged')}
+                                        className="text-sm"
+                                    >
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Acknowledge All Unacknowledged
+                                    </Button>
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                    <div className="flex flex-wrap justify-center lg:justify-end gap-4">
+                                        <div className="flex items-center space-x-1">
+                                            <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                                            <span className="font-medium text-red-600">
+                                                {alerts.filter(alert => alert.currentStatus === 'unacknowledged').length} unacknowledged
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center space-x-1">
+                                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                            <span className="font-medium text-blue-600">
+                                                {alerts.filter(alert => alert.currentStatus === 'acknowledged').length} acknowledged
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center space-x-1">
+                                            <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                                            <span className="font-medium text-gray-600">
+                                                {alerts.filter(alert => alert.currentStatus === 'archived').length} archived
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-6 py-4 bg-muted/30 border-t">
+                                {/* Page Size and Info */}
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                                    <div className="flex items-center space-x-3">
+                                        <span className="text-sm text-muted-foreground">Per page:</span>
+                                        <Select value={alertsPerPage.toString()} onValueChange={(value) => {
+                                            setAlertsPerPage(parseInt(value));
+                                            setCurrentPage(1); // Reset to first page when changing page size
+                                        }}>
+                                            <SelectTrigger className="w-20 h-9">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="5">5</SelectItem>
+                                                <SelectItem value="10">10</SelectItem>
+                                                <SelectItem value="20">20</SelectItem>
+                                                <SelectItem value="50">50</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                        Showing {((currentPage - 1) * alertsPerPage) + 1} to {Math.min(currentPage * alertsPerPage, totalCount)} of {totalCount} alerts
+                                    </div>
+                                </div>
+                                
+                                {/* Navigation Buttons */}
+                                <div className="flex items-center justify-center space-x-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(1)}
+                                        disabled={currentPage === 1}
+                                        className="h-9 px-3 text-sm"
+                                    >
+                                        First
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                        className="h-9 px-3 text-sm"
+                                    >
+                                        Previous
+                                    </Button>
+                                    <span className="text-sm text-muted-foreground px-3">
+                                        Page {currentPage} of {totalPages}
+                                    </span>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(currentPage + 1)}
+                                        disabled={currentPage === totalPages}
+                                        className="h-9 px-3 text-sm"
+                                    >
+                                        Next
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(totalPages)}
+                                        disabled={currentPage === totalPages}
+                                        className="h-9 px-3 text-sm"
+                                    >
+                                        Last
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                </CardContent>
+            </Card>
             </div>
         </DashboardLayout>
     );

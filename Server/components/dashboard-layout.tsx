@@ -30,7 +30,7 @@ export default function DashboardLayout({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <Header 
           title={title} 
@@ -39,8 +39,10 @@ export default function DashboardLayout({
         />
 
         {/* Main Content */}
-        <main className="flex-1 p-6">
-          {children}
+        <main className="flex-1 p-6 w-full">
+          <div className="w-full max-w-none">
+            {children}
+          </div>
         </main>
 
         {/* Footer */}

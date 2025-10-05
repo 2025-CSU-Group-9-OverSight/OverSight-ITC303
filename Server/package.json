@@ -10,6 +10,9 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test": "echo \"Add test framework (Jest/Vitest)\" && exit 0",
+    "generate-token": "node ../generate-token.js",
+    "generate-nextauth": "node ../generate-token.js nextauth",
+    "generate-all-tokens": "node ../generate-token.js all",
     "seed": "curl -X POST http://localhost:3000/api/seed",
     "seed-alerts": "npx tsx scripts/seed-alerts.ts"
   },
